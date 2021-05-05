@@ -1,0 +1,34 @@
+{by Ernesto CIANCIOTTA Produciotns}
+
+{ Modulo in cui sono raccolti tutti i paths necessari per l'esecuzione }
+{ Golib.                                                               }
+
+
+UNIT Paths;
+
+INTERFACE
+
+const
+      Main_Directory = 'c:\progetti\proget~1\';
+      Work_Dir       = Main_Directory+'golib\';
+
+var
+      Work_Directory : string;
+      BGI_Directory  : string;
+
+      GolibRESFile   : string;
+
+const
+      ToolBarRESFile = Work_Dir+'golib8.bmp\toolbar.res';
+
+
+
+IMPLEMENTATION
+
+begin
+  Work_Directory:=Work_Dir;
+  BGI_Directory :=Main_Directory+'bp\bgi\';
+
+{ Files di risorsa }
+  GolibRESFile  :=Work_Dir+'golib8.bmp\golib8.res';
+end.

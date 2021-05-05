@@ -1,0 +1,171 @@
+Informazioni sul tipo TMessage.
+-------------------------------
+
+
+- I messaggi con codice tipo 1xxxh sono messaggi che vengono direttamente
+  eseguiti dal sistema senza essere passati a nessun oggetto.
+
+
+- Un messaggio si riferisce ad un evento proveniente da Mouse se il campo
+  TMessage.Message ha un valore tipo 8xxxh.
+
+Struttura del campo:
+
+        ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿
+        ³             TMessage.Message  (MOUSE)                         ³
+        ÉÍÍÍÑÍÍÍÑÍÍÍÑÍÍÍÑÍÍÍÑÍÍÍÑÍÍÍÑÍÍÍËÍÍÍÑÍÍÍÑÍÍÍÑÍÍÍÑÍÍÍÑÍÍÍÑÍÍÍÑÍÍÍ»
+        º 1 ³ 0 ³ 0 ³ 0 ³ \ ³ \ ³ \ ³   º   ³ \ ³ \ ³ \ ³ \ ³ \ ³   ³   º
+        ÈÍÑÍÏÍÍÍÏÍÍÍÏÍÑÍÏÍÍÍÏÍÍÍÏÍÍÍÏÍÑÍÊÍÑÍÏÍÍÍÏÍÍÍÏÍÍÍÏÍÍÍÏÍÍÍÏÍÑÍÏÍÑÍ¼
+          ³           ³               ³   ³                       ³   ³
+          ÀÄÄÄÄÄÂÄÄÄÄÄÙ               ³   ³                       ³   ³
+                ³                     ³   ³                       ³   ³
+Evento Mouse ÄÄÄÙ                     ³   ³                       ³   ³
+                                      ³   ³                       ³   ³
+Bit di Multiclicking (**)ÄÄÄÄÄÄÄÄÄÄÄÄÄÙ   ³                       ³   ³
+                                          ³                       ³   ³
+Stato del bottone (*)ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ                       ÀÄÂÄÙ
+                                                                    ³
+Numero del bottone ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
+
+
+(*)  Se il bit Š settato allora il tasto Š stato premuto, altrimenti
+     rilasciato (1=premuto/0=rilasciato).
+
+(**) Se il bit Š settato allora il messaggio si riferisce ad un evento
+     di multiclicking.
+
+
+
+
+
+Campi relativi ad un evento del mouse:
+- Mcx;
+- Mcy;
+- Clicks;
+- Shifts.
+
+
+
+
+
+Campi relativi ad un evento della tastiera:
+- KeyStroke;
+- Character;
+- ScanCode;
+- Shifts.
+
+
+
+******************************************************************************
+
+
+GESTIONE DEGLI HOT SPOTS.
+_________________________
+
+
+  Gli Hot spots sono delle regioni dello schermo in cui il cursore del
+  mouse assume un aspetto particolare (es.: forma di un orologio, di un
+  pennello, di un cerchio, ecc...).
+  Inoltre Š possibile associare ad a ciascuno di essi uno evento da eseguire
+  se si verifica un evento particolare (es.: pressione di un tasto del mouse)
+  quando il puntatore del mouse Š sullo hot spot.
+
+
+  Nelle applicazioni GOLIB questi Hot Spots sono memorizzati sotto forma di
+  risorse Š ogni oggetto del ramo OTView pu• creare un collegamento con
+  tali risorse tramite il campo "OTView.HotSpotsRes".
+
+  Il campo "OTView.HotSpotsRes" Š di tipo "THotSpotField":
+
+     THotSpotField = record
+        case boolean of
+        false: ( CursorID: word
+                );
+        true : ( HotSpotsPackage: PHotSpotsArray
+                );
+     end;
+
+  Il sottocampo "HotSpotsPackage" Š attivo se l'inizializzatore dell'oggetto
+  riesce a trovare una risorsa del tipo "Hot Spots Package" con
+  l'identificativo richiesto (tale identificativo deve essere specificato
+  nel codice sorgente del costruttore dell'oggetto derivato) ed esso
+  punta alla risorsa allocata in memoria. Se tale risorsa non viene trovata,
+  allora viene attivato il sottocampo "CursorID" che ha come valore il
+  valore dell'identificativo richiesto se Š possibile trovare una risorsa
+  di tipo "Cursor" con tale identificativo. Se non Š possibile trovare
+  nemmeno una risorsa di questo tipo, allora viene riattivato il sottocampo
+  "Hot Spots Package" con valore uguale a NIL e l'oggetto risponder… agli
+  eventi in modalit… base standard, cioŠ tramite il campo OTView.ID.
+
+  Per attivare il sottocampo "Hot Spots Package" di deve settare il
+  flag "cfHotSpotRes", viceversa per attivare il sottocampo "CursorID"
+  si deve resettare lo stesso flag.
+
+  Per semplificare tale operazione si far… uso di una funzione o procedura
+  che avr… in input un codice di identificazione risorsa e che eseguira
+  l'algoritmo descritto sopra per il recupero delle risorse.
+
+
+  N.B.: Per una descrizione tramite flow-chart dell'algoritmo vedere il file
+        bitmapped:
+        - Recupero risorse Hot Spots.
+
+
+  Nella modalit… "CursorID" il cursore assumer… l'aspetto definito dalla
+  risorsa "Cursor" quando si trover… nella regione dell'oggetto.
+
+  La risorsa di tipo "Hot Spots Package" permette ad un oggetto di
+  definire pi— Hot Spots per lo stesso oggetto e ha il seguente formato:
+
+
+  1 - Singolo Hot Spot:
+
+      THotSpot = record
+
+         { Regione dello hot spot relativa al punto (OTView.R.x1,OTView.R.y1) }
+         x1, y1,
+         x2, y2:   integer;
+
+         { Identificatore della risorsa cursore di tipo "Cursor" da attivare
+           quando il cursore Š nella regione hot }
+         IDCursor: word;
+
+         { Messaggio da far inviare automaticamente da parte dell'oggetto }
+         Message:  word;
+      end;
+
+
+  2 - Hot Spots Package
+
+      THotSpotsArray = record
+
+         { Numero di Hot Spots contenuti nella collezione }
+         lim: word;
+
+         { Collezione di Hot Spots sotto forma di vettore }
+         v: array [0..0] of THotSpot;
+      end;
+
+
+  N.B.: Un istanza del tipo OTView non viene associata a nessuna
+        risorsa Hot Spot pechŠ i costruttori non lo prevedono.
+        E' possibile associare una risorsa Hot Spot solo a un
+        oggetto derivato da OTView.
+
+
+  L'allocazione delle risorse di tipo "Hot Spot Package" vengono allocate
+  nell'area di memoria dedicata alle risorse cos come le risorse di tipo
+  "Cursor".
+
+  Quando il puntatore del mouse si sposta, allora l'Application controller
+  determina il nuovo oggetto puntato dal mouse scandendo sempre la
+  display-list a partire dalla ROOT e una volta trovato l'oggetto interessato
+  controlla come esso Š configurato per le risorse di tipo "Cursor" e di
+  tipo " Hot Spot Package".
+
+  Se l'oggetto Š configurato per una risorsa di tipo "Cursor" allora
+  cambia solo il cursore del mouse.
+  Se, invece, Š configurato per una risorsa di tipo "Hot Spot Package"
+  allora ricerca l'hot spot sul quale si trova il cursore e imposta il
+  cursore del mouse con la risorsa "Cursor" corrispondente e spedisce il
+  messaggio associato all'hot spot.

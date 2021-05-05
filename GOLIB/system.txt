@@ -1,0 +1,9 @@
+Cursori contenuti in SYSTEM.RCG
+
+ID		path
+----------------------------------------------------
+0		syscur.cur
+1		no_dim.cur
+2		ne_dim.cur
+3		se_dim.cur
+4		so_dim.cur

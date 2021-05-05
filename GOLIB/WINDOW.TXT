@@ -1,0 +1,86 @@
+DESCRIZIONE DELL'OGGETTO "OTWindow" DELLA LIBRERIA GOLIB.
+
+(c) 1994,1995  Ernesto CIANCIOTTA Productions
+
+
+
+
+       La lista degli oggetti che compongono OTWindow ä cosç strutturata:
+
+______________________________________________________________________________
+------------------------------------------------------------------------------
+              ƒƒ¬ƒƒ¬ <- _gruppo_
+                ≥\\≥ ------------------------------------------------------
+  intestazione  ≥\\≥
+  privileggiata ≥\\≥ In quest'area privileggiata ci sono alcuni oggetti
+                ≥\\≥ che fanno parte dell'intestazione ed ä un'area della
+                ≥\\≥ lista che ä direttamente gestita dall'oggetto
+                ≥\\≥ "OTWindow".
+                ≥\\≥ N.B.: E' importante che questa parte della lista non
+                ≥\\≥       venga toccata dal programmatore se non ä pienamente
+                ≥\\≥       a conoscenza di come opera l'oggetto.
+                ≥\\≥ ------------------------------------------------------
+              ƒƒ≈ƒƒ≈ <- _intest_
+                ≥\\≥ ------------------------------------------------------
+   intestazione ≥\\≥
+                ≥\\≥ In quest'area ci sono gli altri oggetti dell'intestazione
+                ≥\\≥ inseriti dal programmatore con l'apposito metodo.
+                ≥\\≥ In questo modo si ottiene che questi oggetti non vengano
+                ≥\\≥ mai coperti da altri oggetti aggiunti successivamente
+                ≥\\≥ per la personalizzazione della finestra
+                ≥\\≥
+                ≥\\≥ ------------------------------------------------------
+              ƒƒ≈ƒƒ≈ <- _menu_
+                ≥\\≥ ------------------------------------------------------
+           menó ≥\\≥
+                ≥\\≥ In quets'area si trovano i vari menó che possono
+                ≥\\≥ essere ad esempio:
+                ≥\\≥ - menó line;
+                ≥\\≥ - tool bar;
+                ≥\\≥ - altri tipi di menó.
+                ≥\\≥
+                ≥\\≥ ------------------------------------------------------
+              ƒƒ≈ƒƒ≈ <- _altri_
+                ≥\\≥ ------------------------------------------------------
+          altri ≥\\≥
+                ≥\\≥ In questa parte della lista vengono inseriti tutti
+                ≥\\≥ gli oggetti che personalizzano la finestra come ad
+                ≥\\≥ - tasti;
+                ≥\\≥ - scroll bar;
+                ≥\\≥ - casselle edit;
+                ≥\\≥ - ecc...
+                ≥\\≥
+                ≥\\≥ ------------------------------------------------------
+              ƒƒ≈ƒƒ≈ <- _sfondo_
+                ≥\\≥ ------------------------------------------------------
+         sfondo ≥\\≥
+                ≥\\≥ Per default in questa zona c'ä solo un oggetto
+                ≥\\≥ OTWin3D, ma possono essere inseriti altri oggetti
+                ≥\\≥ che personalizzano il background oppure ä possibile
+                ≥\\≥ sostituire lo sfondo di default con un altro oggetto.
+                ≥\\≥
+                ≥\\≥ ------------------------------------------------------
+              ƒƒ¡ƒƒ¡ <- _last_
+______________________________________________________________________________
+------------------------------------------------------------------------------
+
+      La distinzione delle aree serve per creare una certa gerarchia
+      all'interno della lista per evitare che oggetti aggiunti succesivamente
+      possano invadere l'area dedicata agli oggetti dell'intestazione e dei
+      menó.
+
+      Inoltre c'ä anche un'altra finalitÖ. Tutti gli oggetti, ad esclusione
+      di quelli facenti parte dell'area "Altri", quando la finestra viene
+      dimensionata, vengono dimensionati anch'essi (per gli oggetti che
+      possono essere dimensionati) mantenendo le stesse distanze dai bordi.
+
+      Per gli oggetti che sono inclusi nell'area "Altri" l'auto dimensionamento
+      ä previsto, ma in modo differente. Nell'oggetto OTWindow ä inclusa
+      un'atra lista puntata da "References" che per ogni oggetti di questa
+      area contiene le seguenti informazioni:
+      a) dimensionamento proporzionale ( attivato/disattivato );
+      b) allineamento ai bordi ( destro/sinistro/superiore/inforiore ).
+
+      Per vedere come una finestra OTWINDOW ä strutturata graficamente
+      vedere il file "WINDOWS.BMP".
+

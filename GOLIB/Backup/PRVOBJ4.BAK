@@ -1,0 +1,93 @@
+{ (c) Ernesto CIANCIOTTA Productions 1996 }
+
+{$I DIRECTIV.INC     Direttive di compilazione}
+
+
+
+{$R-}
+{$S-}
+
+program prova_dispfile;
+uses
+     crt;
+
+type
+
+    o1 = object
+      var1,
+      var2: longint;
+      constructor init;
+      procedure mth1; virtual;
+    end;
+
+    o2 = object (o1)
+      var3: word;
+      constructor init;
+      procedure mth1; virtual;
+    end;
+
+
+
+
+    constructor o1.init;
+      begin
+      end;
+
+
+    procedure o1.mth1;
+      begin
+        writeln('o1: Ciao!');
+      end;
+
+
+    constructor o2.init;
+      begin
+      end;
+
+
+    procedure o2.mth1;
+      begin
+        writeln('o2: Come va?');
+      end;
+
+
+  { Modifica il riferimento alla VMT dell'oggetto }
+   procedure DinamicCast(obj:pointer; newType:pointer; SizeOfAncestor:word);
+   assembler;
+     asm
+        les    dx,newType
+        les    di,obj
+        sub    SizeOfAncestor,2
+        add    di,SizeOfAncestor
+        mov    es:[di],dx
+     end;
+
+
+
+var obj1  : o1;
+    obj2  : o2;
+
+    puntObj: ^o1;
+
+begin
+  obj1.init;
+  obj2.init;
+  clrscr;
+
+  obj1.mth1;
+  obj2.mth1;
+  writeln;
+
+  puntObj:=@obj1;
+  puntObj^.mth1;
+  puntObj:=@obj2;
+  puntObj^.mth1;
+  writeln;
+
+  DinamicCast(puntObj,typeof(o1),sizeof(o1));
+  puntObj^.mth1;
+  DinamicCast(puntObj,typeof(o2),sizeof(o1));
+  puntObj^.mth1;
+
+  readkey;
+end.

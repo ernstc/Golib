@@ -1,0 +1,227 @@
+{ (c) Ernesto CIANCIOTTA Productions 1996 }
+
+{$I DIRECTIV.INC     Direttive di compilazione}
+
+
+uses
+    crt,
+    graph,
+    mouse,
+    graftool;
+
+
+const
+     NPunti = 7;  { >= 2 }
+     passi  = 100;
+
+
+
+type
+    VetXY = array[0..NPunti-1,1..2] of real;
+
+
+
+var
+   KnotK,KnotN:integer;
+
+   p:VetXY; {punti}
+   x,y,z:real;
+   u:real;
+   n,k:integer;
+
+
+
+function Knot(i:integer):integer;
+  begin
+    if i<knotK
+      then Knot:=0
+      else if i>KnotN
+             then Knot:=knotN-knotK+2
+             else Knot:=i-knotK+1;
+  end;
+
+
+
+function NBlend(i,k:integer; u:real):real;
+  var t:integer;
+      v:real;
+  begin {NBlend}
+    if k=1 then begin
+      if (Knot(i)<=u) and (u<Knot(i+1)) then v:=1
+                                        else v:=0;
+    end
+    else begin
+      v:=0;
+      t:=Knot(i+k-1)-Knot(i);
+      if t<>0 then v:=(u-Knot(i))*NBlend(i,k-1,u)/t;
+      t:=Knot(i+k)-Knot(i+1);
+      if t<>0 then v:=v+(Knot(i+k)-u)*NBlend(i+1,k-1,u)/t
+    end;
+    NBlend:=v;
+  end;  {NBlend}
+
+
+
+procedure BSpline(var x,y:real; u:real; n,k:integer;var p:VetXY);
+  var i:integer;
+      b:real;
+  begin {BSpline}
+    knotK:=k;
+    knotN:=n;
+    x:=0;
+    y:=0;
+    {z:=0;}
+    for i:=0 to n do begin
+      b:=NBlend(i,k,u);
+      x:=x+p[i,1]*b;
+      y:=y+p[i,2]*b;
+    end;
+  end;  {BSpline}
+
+
+function NBlend2(i,k:integer; u:real):real;
+  var t:integer;
+      v:real;
+  begin {NBlend}
+    if k=1 then begin
+      if (i<=u) and (u<i+1) then v:=1
+                            else v:=0;
+    end
+    else begin
+      v:=0;
+      t:=i+k-1-i;
+      if t<>0 then v:=(u-i)*NBlend(i,k-1,u)/t;
+      t:=i+k-i+1;
+      if t<>0 then v:=v+(i+k-u)*NBlend(i+1,k-1,u)/t
+    end;
+    NBlend2:=v;
+  end;  {NBlend}
+
+
+procedure BSpline2(var x,y:real; u:real; n,k:integer;var p:VetXY);
+  var i:integer;
+      b:real;
+      r:real;
+  begin {BSpline}
+    KnotK:=k;
+    KnotN:=n;
+    x:=0;
+    y:=0;
+    {z:=0;}
+    for i:=0 to n do begin
+      r:=(u-i+n+1)/(n+1);
+      r:=(r-trunc(r))*(n+1);
+      b:=NBlend2(0,k,(round(u)-i+n+1) mod (n+1));
+      x:=x+p[i,1]*b;
+      y:=y+p[i,2]*b;
+    end;
+  end;  {BSpline}
+
+
+
+procedure DisegnaLinee;
+  var i:integer;
+  begin
+    SetColor(14);
+    MoveTo(Round(p[0,1]),Round(p[0,2]));
+    for i:=1 to NPunti-1 do begin
+      lineTo(Round(p[i,1]),Round(p[i,2]));
+    end;
+  end;
+
+
+
+procedure DisegnaCurva;
+  var x,y,z:real;
+      step:real;
+      primo:boolean;
+      max:integer;
+  begin
+    u:=0;   {fra 0 e n+1}
+    SetColor(15);
+    primo:=true;
+    max:=n-k+2;
+    step:=max/passi;
+    while u<max do begin
+      BSpline(x,y,u,n,k,p);
+      if primo then MoveTo(Round(x),Round(y))
+               else begin
+                 LineTo(Round(x),Round(y));
+                 {delay(10);}
+               end;
+      u:=u+step;
+      primo:=false;
+    end;
+    {LineTo(Round(p[Npunti-1,1]),Round(p[Npunti-1,2]));}
+  end;
+
+
+procedure DisegnaCurva2;
+  var x,y,z:real;
+      step:real;
+      primo:boolean;
+      max:integer;
+      px,py:real;
+  begin
+    u:=0;   {fra 0 e n+1}
+    SetColor(15);
+    primo:=true;
+    max:=n-k+2;
+    step:=max/passi;
+    while u<max do begin
+      BSpline2(x,y,u,n,k,p);
+      if primo then begin
+        MoveTo(Round(x),Round(y));
+        px:=x;
+        py:=y;
+      end
+      else begin
+        LineTo(Round(x),Round(y));
+        {delay(10);}
+      end;
+      u:=u+step;
+      primo:=false;
+    end;
+    LineTo(Round(px),Round(py));
+  end;
+
+procedure DisegnaCurvaP;
+  var x,y,z:real;
+      step:real;
+      primo:boolean;
+      max:integer;
+  begin
+    u:=0;   {fra 0 e n+1}
+    SetColor(15);
+    primo:=true;
+    max:=n-k+2;
+    step:=max/passi;
+    while u<max do begin
+      BSpline(x,y,u,n,k,p);
+      PutPixel(Round(x),Round(y),15);
+      u:=u+step;
+      primo:=false;
+    end;
+  end;
+
+
+
+begin
+  InizializzaGrafica(3,16);
+  StartMouse;
+  p[0,1]:=180;    p[0,2]:=200;
+  p[1,1]:=250;    p[1,2]:=200;
+  p[2,1]:=350;    p[2,2]:= 50;
+  p[3,1]:=500;    p[3,2]:=330;
+  p[4,1]:=150;    p[4,2]:=450;
+  p[5,1]:=130;    p[5,2]:=100;
+  p[6,1]:=180;    p[6,2]:=200;
+  n:=Npunti-1;
+  DisegnaLinee;
+  {readkey;}
+  for k:= 4 to 4 do begin
+    {DisegnaCurva2;}
+    DisegnaCurva;
+  end;
+  readkey;
+end.

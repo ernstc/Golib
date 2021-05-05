@@ -1,0 +1,1148 @@
+{ by ERNESTO CIANCIOTTA Productions }
+
+{***************************************************}
+{*                                                 *}
+{*  Modulo della libreria GOLIB contenente         *}
+{*  l'oggetto finestra OTWindow e suoi discendenti *}
+{*  - OTWindowMDI,                                 *}
+{*  - OTToolBox.                                   *}
+{*                                                 *}
+{*  Scritto con Turbo Pascal ver 7.0.              *}
+{*                                                 *}
+{***************************************************}
+
+{$D+}
+{$L+}
+{$X+}
+{$R-}
+
+
+UNIT Window2;
+
+INTERFACE
+
+
+uses
+
+{ Moduli per il debug }
+     crt,
+     utility,
+     fonts,
+
+{ Moduli conteneti codici }
+     codici,
+     golibcod,
+     golib_h,
+
+{ Moduli di sistema }
+     strings,
+     mouse,
+     graph,
+     graftool,
+     golib9,
+       dispfile,
+
+{ Modulo per l'accesso ai bottoni }
+     buttons,
+
+{ Modulo per l'accesso all'intestazione della finestra }
+     w_header,
+
+{ Moduli necessari per l'utilizzo del bitmap ReducedIcon }
+     bitmap,
+     bitmaps,
+     resman;
+
+
+type
+
+     TLayoutParam=(LmLeft,LmRight,LmTop,LmBottom,LmCenter,LmWidth,LmHeight);
+
+     TValueMethod=(InPixels,InPercent);
+
+     TParent=(LmParent,LmOther);
+
+     PLayout = ^TLayout;
+     TLayout = record
+        param:TLayoutParam;
+        method:TValueMethod;
+        value:integer;
+     end;
+
+     OPLayoutMetrics = ^OTLayoutMetrics;
+     OTLayoutMetrics = object
+        Par1,
+        Par2,
+        Par3,
+        Par4: TLayout;
+        parent:TParent;
+        Source:OPRect;
+        procedure GetRect(var _source, rect: OTRect);
+     end;
+
+
+const
+
+     FullRectParent: OTLayoutMetrics =
+       ( Par1: (param:LmLeft;   method:InPixels; value:0);
+         Par2: (param:LmTop;    method:InPixels; value:0);
+         Par3: (param:LmRight;  method:InPixels; value:0);
+         Par4: (param:LmBottom; method:InPixels; value:0);
+         parent: LmParent;
+         Source: nil
+       );
+
+     FullRectOther: OTLayoutMetrics =
+       ( Par1: (param:LmLeft;   method:InPixels; value:0);
+         Par2: (param:LmTop;    method:InPixels; value:0);
+         Par3: (param:LmRight;  method:InPixels; value:0);
+         Par4: (param:LmBottom; method:InPixels; value:0);
+         parent: LmOther;
+         Source: nil
+       );
+
+type
+
+     PLayoutList = ^TLayoutList;
+     TLayoutList = record
+        layout:OPLayoutMetrics;
+        succ:PLayoutList;
+     end;
+
+
+     PListaBordi = ^TListaBordi;
+     TListaBordi = record
+        bordo:TBordo;
+        succ:PListaBordi;
+     end;
+
+
+     OPWindow = ^OTWindow;
+     OTWindow = object (OTView)
+        WinInfo: byte;
+        { Nome della finestra }
+        RectOther:OTRect; { Rettangolo ALTRI residuo.
+                            * vedi il file WINDOWS.BMP }
+        { Margini del rettangolo RectOther }
+        MargSin, MargDes,
+        MargSup, MargInf: integer;
+        _altri_ :OPView;
+        { Lista in cui vengono immagazzinati tutti gli oggetti
+          "other" (cioŠ che non fanno parte dell'intestazione,
+          non sono dei men— e non fanno parte dello sfondo).
+          Questa sotto-lista rappresenta la regione fisica, ossia
+          la "PAGINA" in cui vengono messi gli altri oggetti della
+          finestra e questo meccanismo permette che gli oggetti
+          inseriti in questa regione non invadano mai in nessun
+          caso l'area dedicata agli oggetti di priorit… superiore. }
+        constructor Init(var coord:OTRect; WHeader:OPWinHeader);
+        destructor Done; virtual;
+        procedure Disegna; virtual;
+        procedure Adjust; virtual;
+        procedure MoveRel(dx,dy:integer); virtual;
+        procedure SetWindowName(intest:PChar);
+        {*
+          Con questi metodi non Š possibile aggiungere una lista di oggetti
+          alla volta con l'uso della procedura "AddObject".
+
+          Gli oggetti devono essere aggiunti uno alla volta con tante chiamate
+          a questi metodi tante volte quanti sono gli oggetti che si vuole
+          aggiungere.
+        *}
+        function AddTitle(obj:OPView; Layout:OPLayoutMetrics; where:TBordo):pointer;
+        function AddMenu(obj:OPView; where:TBordo):pointer;
+        function AddOther(obj:OPView; Layout:OPLayoutMetrics):pointer;
+        function AddBackground(obj:OPView; Layout:OPLayoutMetrics):pointer;
+        { ***
+          N.B.: Devono essere fatti i metodi per l'eliminazione degli oggetti
+          ***   dalla sub-list generale e dalla sub-list _altri_.
+        }
+     private
+     public
+        MinMarg:integer;
+
+        WinHeader:OPWinHeader;
+        WinHeaderEdges:PChar;   { bordi per gli oggetti dell'intestazione }
+
+        { Puntatori che delimitano settori particolari della lista degli
+          oggetti che compongono la finestra.
+          Non fanno capo a nessuna lista, sono come dei segnalibro. }
+        _intest_,
+        { Gli oggetti che si trovano da _gruppo_ a _intest_ sono privileggiati
+          perchŠ vengono manipolati durante l'esecuzione dallo stesso oggetto
+          OTWindow. Gli oggetti dell'intestaziome che possono essere aggiunti
+          vengono collocati nella lista nello spazio che va da _intest_ a _menu_.}
+        _menu_,
+        _sfondo_:OPView;
+
+        {FirstTitleEdges:PListaBordi; { Lista dei bordi degli oggetti privileggiati}
+        IntestBordi:PListaBordi; { Lista dei bordi degli oggetti dell'intestazione }
+        MenuBordi:PListaBordi; { Lista dei bordi dei vari menu }
+
+        LastLayoutMetr,
+        LayoutMetrics,
+        OtherLayouts :PLayoutList; { Lista dei layout degli oggetti della
+                                     finestra. Questa lista viene usata
+                                     solo quando c'Š um dimensionamento
+                                     della finestra.
+                                     "OtherLayouts" punta ad una lista che
+                                     contiene solo i layouts della lista _altri_.}
+
+        procedure AdjustWithWinHeader;
+        { Questo metodo provvede a ridimensionare il rettangolo "RectOther"
+          in funzione di "rect" e "bordo".}
+        procedure AdjustRectOther(var rect:OTRect; bordo:TBordo);
+        { Inserisce un oggetto nella lista degli oggetti prima di "where" }
+        procedure Add(var where:OPView; obj:OPView; Layout:OPLayoutMetrics);
+        { Inserisce un layout nella lista dopo "pos" }
+        procedure InsertLayout(pos:PLayoutList;l:OPLayoutMetrics);
+        { Aggiunge un layout in coda alla lista }
+        procedure AddLayoutAtTop(l:OPLayoutMetrics);
+        { Rimuove un oggetto dalla lista degli oggetti }
+        procedure Remove(categoria,obj:OPView);
+     end;
+
+(*
+     { Finestre nell'area "altri" di altre finestre. }
+
+     OPWindowMDI = ^OTWindowMDI;
+     OTWindowMDI = object (OTWindow)
+        constructor Init(var coord:OTRect; intest:string; WFather:OPWindow; Param:pointer);
+     private
+        {-- Procedure di risposta agli eventi di default --}
+        procedure Chiudi; virtual;
+        procedure Zoom; virtual;
+        procedure DimensioniNormali; virtual;
+        procedure Riduci; virtual;
+     end;
+*)
+
+
+
+
+   function NewLayoutList(_Layout:OPLayoutMetrics; next:PLayoutList):PLayoutList;
+   function NewLayout(par:TLayoutParam; MValue:TValueMethod; val:integer):PLayout;
+   function NewLayoutMetrics(p1,p2,p3,p4:PLayout;_parent:TParent;__parent:OPRect):OPLayoutMetrics;
+   function __NewLayoutMetrics__(
+                par_1: TLayoutParam;  MValue_1: TValueMethod;  val_1: integer;
+                par_2: TLayoutParam;  MValue_2: TValueMethod;  val_2: integer;
+                par_3: TLayoutParam;  MValue_3: TValueMethod;  val_3: integer;
+                par_4: TLayoutParam;  MValue_4: TValueMethod;  val_4: integer;
+                _parent:TParent;__parent:OPRect): OPLayoutMetrics;
+
+
+var
+   ReducedIcon:HCA;
+
+
+
+IMPLEMENTATION
+
+{ ********************************************************************* }
+{ +++                   Procedure di utilit….                       +++ }
+{ ********************************************************************* }
+
+
+   function NewLayoutList(_Layout:OPLayoutMetrics; next:PLayoutList):PLayoutList;
+     var buf:PLayoutList;
+     begin
+       new(buf);
+       buf^.layout:=_Layout;
+       buf^.succ:=next;
+       NewLayoutList:=buf;
+     end;
+
+
+   function NewLayout(par:TLayoutParam;MValue:TValueMethod;val:integer):PLayout;
+     var buf:PLayout;
+     begin
+       new(buf);
+       with buf^ do begin
+         param:=par;
+         method:=MValue;
+         value:=val;
+       end;
+       NewLayout:=buf;
+     end;
+
+
+   function NewLayoutMetrics(p1,p2,p3,p4:PLayout;_parent:TParent;__parent:OPRect):OPLayoutMetrics;
+     var buf:OPLayoutMetrics;
+     begin
+       new(buf);
+       with buf^ do begin
+         Par1:=p1^;
+         Par2:=p2^;
+         Par3:=p3^;
+         Par4:=p4^;
+         parent:=_parent;
+         if parent=LmOther then Source:=__parent
+                           else Source:=nil;
+       end;
+       dispose(p1);
+       dispose(p2);
+       dispose(p3);
+       dispose(p4);
+       NewLayoutMetrics:=buf;
+     end;
+
+
+   function __NewLayoutMetrics__(
+                par_1: TLayoutParam;  MValue_1: TValueMethod;  val_1: integer;
+                par_2: TLayoutParam;  MValue_2: TValueMethod;  val_2: integer;
+                par_3: TLayoutParam;  MValue_3: TValueMethod;  val_3: integer;
+                par_4: TLayoutParam;  MValue_4: TValueMethod;  val_4: integer;
+                _parent:TParent;__parent:OPRect): OPLayoutMetrics;
+     var buf:OPLayoutMetrics;
+     begin
+       new(buf);
+       with buf^ do begin
+         with Par1 do begin
+           param:=par_1;
+           method:=MValue_1;
+           value:=val_1;
+         end;
+         with Par2 do begin
+           param:=par_2;
+           method:=MValue_2;
+           value:=val_2;
+         end;
+         with Par3 do begin
+           param:=par_3;
+           method:=MValue_3;
+           value:=val_3;
+         end;
+         with Par4 do begin
+           param:=par_4;
+           method:=MValue_4;
+           value:=val_4;
+         end;
+         parent:=_parent;
+         if parent=LmOther then Source:=__parent
+                           else Source:=nil;
+       end;
+       __NewLayoutMetrics__:=buf;
+     end;
+
+
+{ *********************************************************************** }
+{ +++        Inizio della definizione dei metodi degli oggetti        +++ }
+{ *********************************************************************** }
+
+
+                  {----- OTLayoutMetrics -----}
+   procedure OTLayoutMetrics.GetRect(var _source,rect:OTRect);
+     var attesa:byte;
+         cx,cy:integer;
+         percent:word;
+         _NullPointer_:boolean;
+     begin
+       attesa:=0;
+       if (parent=LmParent) or (Source=nil) then begin
+         source:=@_source;
+         _NullPointer_:=true;
+       end
+       else _NullPointer_:=false;
+       with source^ do begin
+         cx:=(x1+x2) div 2;
+         cy:=(y1+y2) div 2;
+
+         case Par1.method of
+           InPercent: begin
+                        percent:=DimX*Par1.value div 100;
+                        case Par1.param of
+                          LmLeft:  rect.x1:=x1+percent;
+                          LmRight: rect.x1:=x2-percent;
+                          LmCenter:rect.x1:=cx+percent;
+                          LmWidth: begin
+                                     rect.x1:=DimX*Par1.value div 100;
+                                     attesa:=attesa or 1;
+                                   end;
+                        end;
+                      end;
+           InPixels:  case Par1.param of
+                        LmLeft:  rect.x1:=x1+Par1.value;
+                        LmRight: rect.x1:=x2-Par1.value;
+                        LmCenter:rect.x1:=cx+Par1.value;
+                        LmWidth: begin
+                                   rect.x1:=Par1.value;
+                                   attesa:=attesa or 1;
+                                 end;
+                      end;
+         end;
+
+         case Par2.method of
+           InPercent: begin
+                        percent:=DimY*Par2.value div 100;
+                        case Par2.param of
+                          LmTop:    rect.y1:=y1+percent;
+                          LmBottom: rect.y1:=y2-percent;
+                          LmCenter: rect.y1:=cy+percent;
+                          LmHeight: begin
+                                      rect.y1:=percent;
+                                      attesa:=attesa or 2;
+                                    end;
+                        end;
+                      end;
+           InPixels:  case Par2.param of
+                        LmTop:    rect.y1:=y1+Par2.value;
+                        LmBottom: rect.y1:=y2-Par2.value;
+                        LmCenter: rect.y1:=cy+Par2.value;
+                        LmHeight: begin
+                                    rect.y1:=Par2.value;
+                                    attesa:=attesa or 2;
+                                  end;
+                      end;
+         end;
+
+         case Par3.method of
+           InPercent: begin
+                        percent:=DimX*Par3.value div 100;
+                        case Par3.param of
+                          LmLeft:   rect.x2:=x1+percent;
+                          LmRight:  rect.x2:=x2-percent;
+                          LmCenter: rect.x2:=cx+percent;
+                          LmWidth:  rect.x2:=rect.x1+percent;
+                        end;
+                      end;
+           InPixels:  case Par3.param of
+                        LmLeft:   rect.x2:=x1+Par3.value;
+                        LmRight:  rect.x2:=x2-Par3.value;
+                        LmCenter: rect.x2:=cx+Par3.value;
+                        LmWidth:  rect.x2:=rect.x1+Par3.value;
+                      end;
+         end;
+
+         case Par4.method of
+           InPercent: begin
+                        percent:=DimY*Par4.value div 100;
+                        case Par4.param of
+                          LmTop:     rect.y2:=y1+percent;
+                          LmBottom:  rect.y2:=y2-percent;
+                          LmCenter:  rect.y2:=cy+percent;
+                          LmHeight:  rect.y2:=rect.y1+percent;
+                        end;
+                      end;
+           InPixels:  case Par4.param of
+                        LmTop:     rect.y2:=y1+Par4.value;
+                        LmBottom:  rect.y2:=y2-Par4.value;
+                        LmCenter:  rect.y2:=cy+Par4.value;
+                        LmHeight:  rect.y2:=rect.y1+Par4.value;
+                      end;
+         end;
+
+       end;
+       with rect do begin
+         if (attesa and 1)=1 then x1:=x2-x1;
+         if (attesa and 2)=2 then y1:=y2-y1;
+         DimX:=x2-x1;
+         DimY:=y2-y1;
+       end;
+       if _NullPointer_ then Source:=nil;
+     end;
+
+
+                           { ----- OTWindow ----- }
+   procedure NuovoBordo(var Lista:PListaBordi; _bordo_:TBordo);
+     var NewEdge:PListaBordi;
+     { Posiziona il nuovo bordo dopo "Lista" e pone "Lista" uguale a "NewEdge" }
+     begin
+       if Lista=nil then begin
+         New(Lista);
+         Lista^.succ:=nil;
+       end
+       else begin
+         New(NewEdge);
+         NewEdge^.succ:=Lista;
+         Lista:=NewEdge;
+       end;
+       Lista^.bordo:=_bordo_;
+     end;
+
+
+   constructor OTWindow.Init(var coord:OTRect; WHeader:OPWinHeader);
+     var buf:OPView;
+         _b:boolean;
+         _ConstrM:boolean;
+         Lay:OPLayoutMetrics;
+         p:pointer;
+     begin
+       if not inherited InitComposite(_WINDOW_,coord,WHeader) then fail;
+       SysConfig:=SysConfig and __cfScanGroup;
+       MinMarg:=Spessore_Bordo;
+       with r do begin
+         if dimX<MinDimX then begin
+           DimX:=MinDimX;
+           x2:=x1+MinDimX;
+         end;
+         if dimY<MinDimY then begin
+           DimY:=MinDimY;
+           y2:=y1+MinDimY;
+         end;
+         RectOther.Assign( x1+MinMarg,
+                           y1+MinMarg,
+                           x2-MinMarg,
+                           y2-MinMarg);
+       end;
+       {WinInfo:=wndSelected;}
+       WinInfo:=0;
+
+       MargSin:=0;  MargDes:=0;
+       MargSup:=0;  MargInf:=0;
+
+       _intest_:=nil;
+       _menu_:=nil;
+       _altri_:=nil;
+       _sfondo_:=nil;
+
+       IntestBordi:=nil;
+       MenuBordi:=nil;
+
+       LayoutMetrics:=nil;
+       LastLayoutMetr:=nil;
+       OtherLayouts:=nil;
+
+       WinHeader:=WHeader;
+       if WinHeader<>nil then begin
+         WinHeader^.R:=R;
+         WinHeader^.Adjust;
+         WinHeaderEdges:=WinHeader^.GetEdges;
+         AdjustWithWinHeader;
+         New(LayoutMetrics);
+         with LayoutMetrics^ do begin
+           layout:=nil;
+           succ:=nil;
+         end;
+         LastLayoutMetr:=LayoutMetrics;
+       end
+       else WinHeaderEdges:=nil;
+
+       PrefRefresh:=TLBR;
+     end;
+
+
+   destructor OTWindow.Done;
+     var option:byte;
+         Bordo:PListaBordi;
+
+     procedure DisposeLayouts(var Layouts:PLayoutList);
+       var lay:PLayoutList;
+       begin
+         lay:=Layouts;
+         while lay<>nil do begin
+           lay:=lay^.succ;
+           {
+             Il seguente codice effettua un controllo sul segmento del layout
+             per evitare di cancellare dei layouts che non sono nello Heap.
+             *****************************************************
+
+             N.B.
+
+             Questo codice Š adatto solo per il Real Mode del DOS dove viene
+             creato solo un segmento dati.
+
+             *****************************************************}
+           if (Layouts^.layout<>nil) and
+              (seg(Layouts^.Layout^)<>DSeg) then dispose(Layouts^.layout);
+
+           dispose(Layouts);
+           Layouts:=lay;
+         end;
+       end;
+
+     begin
+       if _altri_<>nil then _altri_^._last_^._down_:=nil;
+       DisposeLayouts(LayoutMetrics);
+       DisposeLayouts(OtherLayouts);
+       Bordo:=IntestBordi;
+       while IntestBordi<>nil do begin
+         IntestBordi:=IntestBordi^.succ;
+         dispose(Bordo);
+         Bordo:=IntestBordi;
+       end;
+       Bordo:=MenuBordi;
+       while MenuBordi<>nil do begin
+         MenuBordi:=MenuBordi^.succ;
+         dispose(Bordo);
+         Bordo:=MenuBordi;
+       end;
+       StrDispose(WinHeaderEdges);
+       inherited Done;
+     end;
+
+
+   procedure OTWindow.Disegna;
+     {
+       Questa procedura disegna la finestra nel seguente modo:
+       elimina la sublista _altri_, effettua il refresh della
+       lista risultante con il metodo TLBR e poi effettua il
+       refresh della sublista _altri_.
+     }
+     var pr_d:boolean;
+         pr_sm:TSortMethod;
+         buf,s:OPView;
+         view:ViewPortType;
+         _precR,
+         _precRectOther:OTRect;
+
+     begin
+       if (WinInfo and wndReduced)<>0 then inherited Disegna
+       else begin
+
+         if WinHeader<>nil then begin
+           { Collega gli oggetti che compongono WinHeader in cima
+             alla lista della finestra. }
+           buf:=WinHeader^._last_;
+           buf^._down_:=_gruppo_^._down_;
+           if _gruppo_^._down_<>nil then _gruppo_^._down_^._up_:=buf;
+           _gruppo_:=WinHeader^._gruppo_;
+         end;
+
+         if RefreshProcessing then begin
+           GetViewSettings(view);
+           _precR:=R;
+           precR.IntersectViewPort(view,R);
+           _precRectOther:=RectOther;
+           RectOther.IntersectViewPort(view,RectOther);
+         end;
+
+         {waitinrefreshDelay:=0;}
+
+         HideMouseCursor;
+         pr_sm:=RectSortMethod;
+         RectSortMethod:=TLBR;
+         if _altri_<>nil then begin
+           { Modifica della lista per il refresh della sola cornice e
+             dell'intestazione }
+           _altri_^._last_^._down_:=_sfondo_;
+           s:=_altri_^._up_;
+           if s<>nil then s^._down_:=_sfondo_;
+           _altri_^._up_:=nil;
+           { Refresh }
+           RefreshRect(R,_gruppo_,GetLightListOf(_sfondo_,@R,NullObj));
+           { Ripristino dei puntatori }
+           if s<>nil then s^._down_:=_altri_;
+           _altri_^._up_:=s;
+           if _sfondo_<>nil then begin
+             buf:=_sfondo_^._up_;
+             s:=_sfondo_;
+             if buf<>nil then buf^._down_:=nil;
+           end;
+           pr_d:=DeleteShadow;
+           DeleteShadow:=false;
+           { Refresh del resto della finestra }
+           if (RectOther.DimX>=0) and
+              (RectOther.DimY>=0) then RefreshRect(RectOther,{_altri_^.}_gruppo_,NullObj);
+           DeleteShadow:=pr_d;
+           if _sfondo_<>nil then buf^._down_:=s;
+         end
+         else inherited Disegna;
+
+         if WinHeader<>nil then begin
+           { Separa gli oggetti che compongono WinHeader dalla cima
+             della lista della finestra e ripristina WinHeader come
+             primo elemento della lista stessa. }
+           _gruppo_:=WinHeader;
+           if WinHeader^._down_<>nil then WinHeader^._down_^._up_:=WinHeader;
+           WinHeader^._last_^._down_:=nil;
+         end;
+
+         RectSortMethod:=pr_sm;
+         ShowMouseCursor;
+         if RefreshProcessing then begin
+           R:=_precR;
+           RectOther:=_precRectOther;
+         end;
+
+         {waitinrefreshDelay:=-1;}
+
+       end;
+     end;
+
+
+   procedure OTWindow.AdjustWithWinHeader;
+     type PCharVet = ^TCharVet;
+          TCharVet = array [1..1] of char;
+     var  i:word;
+          p:OPView;
+     begin
+       WinHeader^.Resize(R);
+       p:=WinHeader^._gruppo_;
+       for i:=1 to StrLen(WinHeaderEdges) do begin
+         with p^.r do
+           case PCharVet(WinHeaderEdges)^[i] of
+           'N': if y2+1+MargSup>RectOther.y1 then RectOther.y1:=y2+1+MargSup;
+           'S': if y1-1-MargInf<RectOther.y2 then RectOther.y2:=y1-1-MargInf;
+           'W': if x2+1+MargSin>RectOther.x1 then RectOther.x1:=x2+1+MargSin;
+           'E': if x1-1-MargDes<RectOther.x2 then RectOther.x2:=x1-1-MargDes;
+           end;
+         p:=p^._down_;
+       end;
+       with RectOther do begin
+         DimX:=x2-x1;
+         DimY:=y2-y1;
+       end;
+     end;
+
+
+   procedure OTWindow.Adjust;
+     var buf,
+         limite   :OPView;
+         LookV,
+         Transform,
+         InSpecial   :boolean;  { Nella prima parte indica se il punatore Š nel
+                                  settore menu, nella seconda parte indica se il
+                                  puntatore Š nel settore sfondo. }
+         PrecStatusX1,
+         PrecStatusY1 ,
+         LastDx,LastDy,
+         CountDx,
+         CountDy  :integer;
+         lay      :PLayoutList;
+         bordo    :PListaBordi;
+         newrect  :OTRect;
+
+     procedure SecondaryAdjust;
+       begin
+         while buf<>nil do begin
+           if {(lay<>nil) and} (lay^.layout<>nil) and ((buf^.SysConfig and cfVisible)=cfVisible)
+             then begin
+               with lay^.layout^ do begin
+                 if parent=LmOther then GetRect(RectOther,newRect)
+                                   else GetRect(r,newRect);
+               end;
+               buf^.Resize(newRect);
+             end
+             else if (CountDx<>0) or (CountDy<>0) then buf^.MoveRel(CountDx,CountDy);
+           buf:=buf^._down_;
+           {if lay<>nil then }lay:=lay^.succ;
+         end;
+       end;
+
+     begin
+       buf:=_gruppo_^._down_;
+       if buf=nil then exit;
+
+       LastDx:=R.x1-precR.x1;
+       LastDy:=R.y1-precR.y1;
+       lookV:=lookvideo;
+       lookvideo:=false;
+       PrecStatusX1:=RectOther.x1;
+       PrecStatusY1:=RectOther.y1;
+       with r do
+       RectOther.Assign( x1+MinMarg,
+                         y1+MinMarg,
+                         x2-MinMarg,
+                         y2-MinMarg);
+       if _altri_<>nil then begin
+         CountDx:=RectOther.x1-_altri_^.R.x1;
+         CountDy:=RectOther.y1-_altri_^.R.y1;
+         limite:=_altri_
+       end
+       else begin
+         CountDx:=RectOther.x1-PrecStatusX1;
+         CountDy:=RectOther.y1-PrecStatusY1;
+         limite:=_sfondo_;
+       end;
+
+       if WinHeader<>nil then begin
+         AdjustWithWinHeader;
+         lay:=LayoutMetrics^.succ;
+       end
+       else lay:=LayoutMetrics;
+
+       if IntestBordi<>nil then
+         bordo:=IntestBordi
+       else bordo:=MenuBordi;
+       InSpecial:=false;
+       { Assestamento degli oggetti compresi nelle liste: _intest_,
+                                                          _menu_              }
+       while buf<>limite do begin
+         if (buf^.SysConfig and cfVisible)=cfVisible then begin
+           transform:=false;
+           if lay^.layout<>nil
+             then begin
+               lay^.layout^.GetRect(r,newRect);
+               transform:=true;
+             end
+             else begin
+               newRect:=buf^.r;
+               if InSpecial
+                 then begin if (CountDx<>0) or (CountDy<>0) then newRect.MoveRel(CountDx,CountDy) end
+                 else begin if (LastDx<>0) or (LastDy<>0) then buf^.MoveRel(LastDx,LastDy) end;
+             end;
+           if transform then buf^.Resize(newRect);
+           if bordo<>nil then begin
+             if transform then
+               with buf^ do case bordo^.bordo of
+                 _est_: if R.DimX<>newRect.DimX then MoveRel(newRect.x2-R.x2,0);
+                 _sud_: if R.DimY<>newRect.DimY then MoveRel(0,newRect.y2-R.y2);
+               end;
+             AdjustRectOther(buf^.r,bordo^.bordo);
+           end;
+
+           { ** }
+
+         end;
+         buf:=buf^._down_;
+         lay:=lay^.succ;
+         {if buf=_intest_ then
+           bordo:=IntestBordi
+         else }if buf=_menu_ then
+           begin
+             InSpecial:=true;
+             bordo:=MenuBordi;
+           end
+         else {if bordo<>nil then }bordo:=bordo^.succ;
+       end;
+
+       { ** }
+       if _altri_<>nil then begin
+         CountDx:=RectOther.x1-_altri_^.R.x1;
+         CountDy:=RectOther.y1-_altri_^.R.y1;
+       end
+       else begin
+         CountDx:=RectOther.x1-PrecStatusX1;
+         CountDy:=RectOther.y1-PrecStatusY1;
+       end;
+
+       { Assestamento degli oggetti della lista _altri_ e della lista _sfondo_ }
+       with RectOther do begin
+         DimX:=x2-x1;
+         DimY:=y2-y1;
+       end;
+       if _altri_<>nil then begin
+         _altri_^.R:=RectOther;
+         lay:=lay^.succ;
+         buf:=buf^._down_;
+       end;
+       SecondaryAdjust;
+       if _altri_<>nil then begin
+         _altri_^._last_^._down_:=nil;
+         buf:=_altri_^._gruppo_;
+         lay:=OtherLayouts;
+         SecondaryAdjust;
+         _altri_^._last_^._down_:=_sfondo_;
+       end;
+       {if _altri_<>nil then _altri_^._last_^.r:=RectOther;}
+       lookvideo:=lookv;
+     end;
+
+
+   procedure OTWindow.MoveRel(dx,dy:integer);
+     var s:OPView;
+     begin
+       if (WinInfo and wndReduced)=0 then RectOther.MoveRel(dx,dy);
+       if _altri_<>nil then begin
+         { Elimina il collegamento fittizio tra l'ultimo elemento che
+           compone l'oggetto _altri_ e il primo oggetto della lista
+           _sfondo_ che Š una parte della lista _gruppo_. }
+         s:=_altri_^._last_^._down_;
+         _altri_^._last_^._down_:=nil;
+       end;
+       inherited MoveRel(dx,dy);
+       { Ripristina il collegamento precedentemente descritto }
+       if _altri_<>nil then _altri_^._last_^._down_:=s;
+     end;
+
+
+   procedure OTWindow.SetWindowName(intest:PChar);
+     var testo:OPText;
+         p:pointer;
+         sm:TSortMethod;
+         barra:OPView;
+         i:byte;
+         Msg:TMessage;
+     begin
+       { Cambia il nome }
+       if WinHeader<>nil then begin
+         Msg.Message:=_CHANGE_WIN_NAME_;
+         Msg.ParametersPtr1:=intest;
+         WinHeader^.MakeSomething(Msg);
+       end;
+     end;
+
+
+   function OTWindow.AddTitle(obj:OPView; Layout:OPLayoutMetrics; where:TBordo):pointer;
+     var bufR:OTRect;
+     begin
+       if _intest_=nil then
+         if _menu_<>nil then
+           _intest_:=_menu_
+         else if _altri_<>nil then
+           _intest_:=_altri_
+         else if _sfondo_<>nil then
+           _intest_:=_sfondo_
+         else if _last_<>nil then
+           _intest_:=_last_
+         else _intest_:=obj;
+       Add(_intest_,obj,Layout);
+       if Layout<>nil then begin
+         Layout^.GetRect(r,bufR);
+         obj^.Resize(bufR);
+       end
+       else obj^.MoveRel(r.x1,r.y1);
+       { Aggiunta del nuovo bordo }
+       NuovoBordo(IntestBordi,where);
+       Adjust;
+       if lookvideo then disegna;
+       AddTitle:=obj;
+     end;
+
+
+   function OTWindow.AddMenu(obj:OPView; where:TBordo):pointer;
+     var layout:OPLayoutMetrics;
+         p:pointer;
+         bufR:OTRect;
+     begin
+       case where of
+        _nord_: Layout:=__NewLayoutMetrics__(
+                             LmLeft,InPixels,0,
+                             LmTop,InPixels,0,
+                             LmRight,InPixels,0,
+                             LmHeight,InPixels,MenuLFont^.GetHeight+10,
+                             LmOther,@RectOther
+                        );
+       _ovest_: Layout:=__NewLayoutMetrics__(
+                             LmLeft,InPixels,0,
+                             LmTop,InPixels,0,
+                             LmWidth,InPixels,10,
+                             LmBottom,InPixels,0,
+                             LmOther,@RectOther
+                        );
+         _est_: Layout:=__NewLayoutMetrics__(
+                             LmWidth,InPixels,10,
+                             LmTop,InPixels,0,
+                             LmRight,InPixels,0,
+                             LmBottom,InPixels,0,
+                             LmOther,@RectOther
+                        );
+         _sud_: Layout:=__NewLayoutMetrics__(
+                             LmLeft,InPixels,0,
+                             LmHeight,InPixels,MenuLFont^.GetHeight+10,
+                             LmRight,InPixels,0,
+                             LmBottom,InPixels,0,
+                             LmOther,@RectOther
+                        );
+       end;
+       if _menu_=nil then
+         if _altri_<>nil then
+           _menu_:=_altri_
+         else if _sfondo_<>nil then
+           _menu_:=_sfondo_
+         else if _last_<>nil then
+           _menu_:=_last_
+         else
+           _menu_:=obj;
+       Add(_menu_,obj,Layout);
+       Layout^.GetRect(r,bufR);
+       obj^.Resize(bufR);
+       if (obj^.SysConfig and cfITLF)=cfITLF then obj^.Adjust;
+       { Aggiunta del nuovo bordo }
+       NuovoBordo(MenuBordi,where);
+       Adjust;
+       if lookvideo then disegna;
+       AddMenu:=obj;
+     end;
+
+
+   function OTWindow.AddOther(obj:OPView; Layout:OPLayoutMetrics):pointer;
+     var buf:OPView;
+         lay:PLayoutList;
+         bufR:OTRect;
+     begin
+       obj^._down_:=nil;
+       obj^._up_:=nil;
+       if _altri_=nil then begin
+         New(buf, InitComposite(Null_ID,RectOther,obj));
+         buf^.PrefRefresh:=TLBR;
+         if _sfondo_<>nil then
+           _altri_:=_sfondo_
+         else if _last_<>nil then
+           _altri_:=_last_
+         else _altri_:=buf;
+         Add(OPView(_altri_),buf,nil);
+         _altri_^._last_^._down_:=_sfondo_;
+       end
+       else _altri_^.AddAtTop(obj);
+       if Layout<>nil then begin
+         {with Layout^ do begin
+           if (parent=LmOther) and (Source=nil) then Source:=@RectOther;
+           GetRect(r,bufR);
+         end;}
+         with Layout^ do if parent=LmOther then GetRect(RectOther,bufR)
+                                           else GetRect(r,bufR);
+         obj^.Resize(bufR);
+       end
+       else obj^.MoveRel(rectOther.x1,rectOther.y1);
+       {Inserimento del layout nella lista "OtherLayouts" con metodo a pila. }
+         new(lay);
+         lay^.layout:=Layout;
+         lay^.succ:=OtherLayouts;
+         OtherLayouts:=lay;
+       {Fine inserimento layout. }
+       if lookvideo then disegna;
+       AddOther:=obj;
+     end;
+
+
+   function OTWindow.AddBackground(obj:OPView; Layout:OPLayoutMetrics):pointer;
+     var lay:PLayoutList;
+         bufR:OTRect;
+     begin
+       if _sfondo_=nil then begin
+         AppendObject(obj);
+         _sfondo_:=obj;
+         if _altri_<>nil then _altri_^._last_^._down_:=_sfondo_;
+         { start:   AppendLayout }
+         if LayoutMetrics=nil then AddLayoutAtTop(Layout)
+         else begin
+           new(lay);
+           lay^.succ:=nil;
+           lay^.layout:=Layout;
+           LastLayoutMetr^.succ:=lay;
+           LastLayoutMetr:=LastLayoutMetr^.succ;
+         end;
+         {   end:   AppendLayout }
+       end
+       else Add(_sfondo_,obj,Layout);
+       if Layout<>nil then begin
+         Layout^.GetRect(r,bufR);
+         obj^.Resize(bufR);
+       end
+       else obj^.MoveRel(r.x1,r.y1);
+       if lookvideo then disegna;
+       AddBackground:=obj;
+     end;
+
+
+   procedure OTWindow.AdjustRectOther(var rect:OTRect; bordo:TBordo);
+     begin
+       with rect do case bordo of
+        _nord_: if y2+1+MargSup>RectOther.y1 then RectOther.y1:=y2+1+MargSup;
+
+       _ovest_: if x2+1+MargSin>RectOther.x1 then RectOther.x1:=x2+1+MargSin;
+
+         _est_: if x1-1-MargDes<RectOther.x2 then RectOther.x2:=x1-1-MargDes;
+
+         _sud_: if y1-1-MargInf<RectOther.y2 then RectOther.y2:=y1-1-MargInf;
+       end;
+       if _altri_<>nil then _altri_^.r:=RectOther;
+     end;
+
+
+   procedure OTWindow.Add(var where:OPView; obj:OPView; Layout:OPLayoutMetrics);
+     { L'inserimento del nouvo oggetto deve essere a pila.
+       "where" indica la lista in cui inserire il nuovo oggetto.
+       Dopo l'inserimento "where" viene aggiornato al suo precedente. }
+     var buf:OPView;
+         lay:PLayoutList;
+     begin
+       {$IFDEF Debugging}
+       if where=nil then begin
+         RestoreCRTMode;
+         writeln('Programma bloccato nel modulo WINDOW/2 nel metodo OTWindow.Add'#13#10);
+         halt;
+       end;
+       {$ENDIF}
+       { Aggiunta dell'oggetto }
+       if _gruppo_=nil then begin  { Se "where=nil" allora la lista Š vuota }
+         AddLayoutAtTop(layout);{ Inserisce il primo layout nell'apposita lista}
+         AppendObject(obj);     { Inserisce il primo oggetto nella lista _gruppo_}
+         where:=_gruppo_;
+       end
+       else if where=_gruppo_ then begin
+         AddLayoutAtTop(layout);{ Sistemazione del nuovo layout }
+         AddAtTop(obj);         { Sistemazione del nuovo oggetto }
+         where:=_gruppo_;
+       end
+       else begin
+         { Sistemazione del nuovo layout }
+         lay:=LayoutMetrics;
+         buf:=_gruppo_;
+         { Ciclo necessario solo per l'inserimento del layout. }
+         while buf<>where^._up_ do begin
+           buf:=buf^._down_;
+           lay:=lay^.succ;
+         end;
+         InsertLayout(lay,layout);
+         { Sistemazione del nuovo oggetto }
+         InsertBefore(where,obj);
+         where:=where^._up_;
+       end;
+     end;
+
+
+   procedure OTWindow.InsertLayout(pos:PLayoutList;l:OPLayoutMetrics);
+     { Inseriscce un nuovo layout dopo "pos" }
+     var buf:PLayoutList;
+     begin
+       new(buf);
+       buf^.succ:=pos^.succ;
+       buf^.layout:=l;
+       if pos=LastLayoutMetr then LastLayoutMetr:=buf;
+       pos^.succ:=buf;
+     end;
+
+
+   procedure OTWindow.AddLayoutAtTop(l:OPLayoutMetrics);
+     var Lay:PLayoutList;
+     begin
+       if LayoutMetrics=nil then begin
+         New(LayoutMetrics);
+         LayoutMetrics^.layout:=l;
+         LayoutMetrics^.succ:=nil;
+         LastLayoutMetr:=LayoutMetrics;
+       end
+       else begin
+         new(Lay);
+         Lay^.succ:=LayoutMetrics;
+         {LastLayoutMetr:=Lay;
+         LastLayoutMetr^.layout:=l;
+         LastLayoutMetr^.succ:=nil;}
+         Lay^.layout:=l;
+         LayoutMetrics:=Lay;
+       end;
+     end;
+
+
+   procedure OTWindow.Remove(categoria,obj:OPView);
+     begin
+     end;
+
+
+
+
+
+{ *********************************************************************** }
+{ +++     Fine della dichiarazione delle procedure degli oggetti      +++ }
+{ *********************************************************************** }
+
+
+var
+    _bmp_:pointer;
+    precExitProc:pointer;
+
+{$F+}
+   procedure ExitWindow;
+     begin
+       DestroyDC(ReducedIcon);
+       if precExitProc<>nil then TProc(precExitProc);
+     end;
+{$F-}
+
+   procedure ErroreRisorse;
+     begin
+       restoreCRTMode;
+       writeln('Errore WINDOW.TPU: Il caricamento delle risorse Š fallito!');
+       halt;
+     end;
+
+begin
+  if GetBMPResource_IDNum(@Golib_RESOURCES,NumeroRisorse,WindowIcon,_bmp_)=0 then ErroreRisorse;
+  if CreateCompatibleArea(ReducedIcon,_bmp_^)=nil then ErroreRisorse;
+  if _bmp_<>nil then DisposeBMP(_bmp_);
+
+  precExitProc:=ExitProc;
+  ExitProc:=@ExitWindow;
+end.

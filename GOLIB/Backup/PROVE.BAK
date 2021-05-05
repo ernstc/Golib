@@ -1,0 +1,15 @@
+uses
+    crt;
+
+var hz:word;
+begin
+  hz:=0;
+  while true do begin
+    case readkey of
+    '+': if hz<20000 then inc(hz);
+    '-': if hz>0 then dec(hz);
+    #27: break;
+    sound(hz);
+  end;
+  nosound;
+end.

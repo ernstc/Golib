@@ -1,0 +1,423 @@
+{ (c) Ernesto CIANCIOTTA Productions 1996 }
+
+{$I DIRECTIV.INC     Direttive di compilazione}
+
+
+
+{**************************************************************************}
+{*                                                                        *}
+{* RESMAN => RESource MANager                                             *}
+{*                                                                        *}
+{*  Insieme di routines per la gestione delle risorse (files .RES) in     *}
+{*  formato Windows(TM).                                                  *}
+{*                                                                        *}
+{*  Scritto con Turbo Pascal 7.0.                                         *}
+{*                                                                        *}
+{**************************************************************************}
+
+UNIT ResMan;
+
+
+INTERFACE
+
+uses
+     graph;
+
+
+type
+     TResSettings = record
+        FileName: string;
+        Ptr     : pointer;
+        NumRes  : word;
+        FromFile: boolean;
+     end;
+
+
+{ Procedure per l'impostazione del nome del file o del puntatore alla locazione di memoria da
+  cui devono essere reperite le risorse con le procedure di richiesta semplificata che seguono. }
+     procedure SetRESFileName(FileName:string);
+     procedure SetRESPtr(ResPtr:pointer; NumRes:word);
+     procedure GetRESSettings(var Settings:TResSettings);
+{ Procedure per il reperimento delle risorse. Queste procedure offrono una semplificazione
+  della richiesta. }
+     function GetResource_IDStr(identifier:string; var Resource:pointer):longint;
+     function GetResource_IDNum(identifier:word; var Resource:pointer):longint;
+
+{ Legge una risorsa bitmapped da un file di risorsa (.RES formato per windows). }
+     function LoadBMPResource_IDStr(FileName:string; identifier:string; var ResourcePointer:pointer):LongInt;
+     function LoadBMPResource_IDNum(FileName:string; identifier:word; var ResourcePointer:pointer):LongInt;
+{ Restituisce il putatore ad una risorsa bitmapped contenuta in un file di
+  risorsa (.RES formato per windows) caricato il memoria all'indirizzo RES. }
+     function GetBMPResource_IDStr(RES:pointer; NRes:word; identifier:string; var ResourcePointer:pointer):longint;
+     function GetBMPResource_IDNum(RES:pointer; NRes:word; identifier:word; var ResourcePointer:pointer):longint;
+
+
+IMPLEMENTATION
+
+uses
+    OpenFile;
+
+const
+      RES_FileName: string  ='';
+      RES_Ptr     : pointer =nil;
+      RES_NumRes  : word    =0;
+      RES_FromFile: boolean =true;
+
+
+   procedure SetRESFileName(FileName:string);
+     begin
+       RES_FileName:=FileName;
+       RES_FromFile:=true;
+     end;
+
+
+   procedure SetRESPtr(ResPtr:pointer; NumRes:word);
+     begin
+       RES_Ptr:=ResPtr;
+       RES_NumRes:=NumRes;
+       RES_FromFile:=false;
+     end;
+
+
+   procedure GetRESSettings(var Settings:TResSettings);
+     begin
+       with Settings do begin
+         FileName:=RES_FileName;
+         Ptr:=RES_Ptr;
+         NumRes:=RES_NumRes;
+         FromFile:=RES_FromFile;
+       end;
+     end;
+
+
+   function GetResource_IDStr(identifier:string; var Resource:pointer):longint;
+     begin
+       if RES_FromFile
+         then GetResource_IDStr:=LoadBMPResource_IDStr(RES_FileName,identifier,Resource)
+         else GetResource_IDStr:=GetBMPResource_IDStr(RES_Ptr,RES_NumRes,identifier,Resource);
+     end;
+
+
+   function GetResource_IDNum(identifier:word; var Resource:pointer):longint;
+     begin
+       if RES_FromFile
+         then GetResource_IDNum:=LoadBMPResource_IDNum(RES_FileName,identifier,Resource)
+         else GetResource_IDNum:=GetBMPResource_IDNum(RES_Ptr,RES_NumRes,identifier,Resource);
+     end;
+
+
+   function LoadBMPResource_IDStr(FileName:string; identifier:string; var ResourcePointer:pointer):LongInt;
+     const
+         DimIntest = 110;
+     type
+         TVet = array[1..119] of byte;
+         PVet = ^TVet;
+         TIntest = array[1..118] of byte;
+     var
+         ResFile:file;
+         Intestazione:TIntest;
+         IntPref:word absolute Intestazione;
+         IntDimFile:^LongInt;
+         ID_String:boolean;
+         ID:word;
+         IDStr:string;
+         ID_count:byte;
+         ID_buf:char;
+         ris,
+         DimX,DimY:word;
+         BMPSize:Longint;
+     begin
+       ResourcePointer:=nil;
+       LoadBMPResource_IDStr:=0;
+       for ID_count:=1 to byte(identifier[0]) do identifier[ID_count]:=upcase(identifier[ID_count]);
+       if ResetFile(ResFile,FileName,1)<>0 then begin
+         RestoreCRTMode;
+         writeln('Errore RESMAN.TPU: errore nel caricamento del file ',FileName);
+         HaltApplication(LastIOResult);
+       end;
+       IDStr:='';
+       while (identifier<>IDStr) or not eof(ResFile) do begin
+         BlockRead(ResFile,Intestazione,3,ris);
+         if ris<>3 then break;
+         ID_count:=0;
+         BlockRead(ResFile,ID_buf,1,ris);
+         if ris<>1 then break;
+         if ID_buf<>#255 then begin
+           while ID_buf<>#0 do begin
+             inc(ID_count);
+             IDStr[ID_count]:=ID_buf;
+             BlockRead(ResFile,ID_buf,1,ris);
+             if ris<>1 then break;
+           end;
+           if ris<>1 then break;
+           IDStr[0]:=char(ID_count);
+           ID_String:=true;
+         end
+         else begin
+           BlockRead(ResFile,ID_buf,2,ris);
+           if ris<>2 then break;
+           ID_String:=false;
+         end;
+         BlockRead(ResFile,Intestazione[9],DimIntest,ris);
+         if ris<>DimIntest then break;
+         DimX:=word(Intestazione[8+11]);
+         DimY:=word(Intestazione[8+11+4]);
+         BMPSize:=(DimX+7-((DimX+7) mod 8))*DimY div 2;
+         if (identifier=IDStr) and ID_String then begin
+           IntPref:=19778;  {66-77}
+           IntDimFile:=@Intestazione[3];
+           Intestazione[7]:=0;
+           Intestazione[8]:=0;
+           IntDimFile^:=BMPSize+118;
+           LoadBMPResource_IDStr:=IntDimFile^;
+           GetMem(ResourcePointer,IntDimFile^);
+           TIntest(ResourcePointer^):=Intestazione;
+           BlockRead(ResFile,PVet(ResourcePointer)^[119],BMPSize,ris);
+           if ris<>BMPSize then break;
+           break;
+         end
+         else seek(ResFile,FilePos(ResFile)+BMPSize);
+       end;
+       close(ResFile);
+     end;
+
+
+   function LoadBMPResource_IDNum(FileName:string; identifier:word; var ResourcePointer:pointer):LongInt;
+     const
+         DimIntest = 110;
+     type
+         TVet = array[1..119] of byte;
+         PVet = ^TVet;
+         TIntest = array[1..118] of byte;
+     var
+         ResFile:file;
+         Intestazione:TIntest;
+         IntPref:word absolute Intestazione;
+         IntDimFile:^LongInt;
+         ID_word:boolean;
+         ID:word;
+         IDStr:string;
+         ID_count:byte;
+         ID_buf:char;
+         ris,
+         DimX,DimY:word;
+         BMPSize:Longint;
+     begin
+       ResourcePointer:=nil;
+       LoadBMPResource_IDNum:=0;
+       if ResetFile(ResFile,FileName,1)<>0 then begin
+         RestoreCRTMode;
+         writeln('Errore RESMAN.TPU: errore nel caricamento del file ',FileName);
+         HaltApplication(LastIOResult);
+       end;
+       ID:=0;
+       while (identifier<>ID) or not eof(ResFile) do begin
+         BlockRead(ResFile,Intestazione,3,ris);
+         if ris<>3 then break;
+         ID_count:=0;
+         BlockRead(ResFile,ID_buf,1,ris);
+         if ris<>1 then break;
+         if ID_buf<>#255 then begin
+           while ID_buf<>#0 do begin
+             BlockRead(ResFile,ID_buf,1,ris);
+             if ris<>1 then break;
+           end;
+           if ris<>1 then break;
+           ID_word:=false;
+         end
+         else begin
+           BlockRead(ResFile,ID,2,ris);
+           if ris<>2 then break;
+           ID_word:=true;
+         end;
+         BlockRead(ResFile,Intestazione[9],DimIntest,ris);
+         if ris<>DimIntest then break;
+         DimX:=word(Intestazione[8+11]);
+         DimY:=word(Intestazione[8+11+4]);
+         BMPSize:=(DimX+7-((DimX+7) mod 8))*DimY div 2;
+         if (identifier=ID) and ID_word then begin
+           IntPref:=19778;  {66-77}
+           IntDimFile:=@Intestazione[3];
+           Intestazione[7]:=0;
+           Intestazione[8]:=0;
+           IntDimFile^:=BMPSize+118;
+           LoadBMPResource_IDNum:=IntDimFile^;
+           GetMem(ResourcePointer,IntDimFile^);
+           TIntest(ResourcePointer^):=Intestazione;
+           BlockRead(ResFile,PVet(ResourcePointer)^[119],BMPSize,ris);
+           if ris<>BMPSize then break;
+           break;
+         end
+         else seek(ResFile,FilePos(ResFile)+BMPSize);
+       end;
+       close(ResFile);
+     end;
+
+
+   function GetBMPResource_IDStr(RES:pointer; NRes:word; identifier:string; var ResourcePointer:pointer):longint;
+     const
+         DimIntest = 110;
+     type
+         TFullVet = array[1..65520] of byte;
+         TVetIntest = array[1..DimIntest] of byte;
+         TVet = array[1..119] of byte;
+         PVet = ^TVet;
+         TIntest = array[1..118] of byte;
+         TResPref = array[1..3] of byte;
+     var
+         Intestazione:TIntest;
+         IntPref:word absolute Intestazione;
+         IntDimFile:^LongInt;
+         ID_String:boolean;
+         IDStr:string;
+         ID_count:byte;
+         ID_buf:char;
+         Nr,
+         Counter,
+         DimX,DimY:word;
+         BMPSize:Longint;
+         pS,pD:pointer;
+     begin
+       ResourcePointer:=nil;
+       for ID_count:=1 to byte(identifier[0]) do identifier[ID_count]:=upcase(identifier[ID_count]);
+       Counter:=1;
+       GetBMPResource_IDStr:=0;
+       Nr:=0;
+       IDStr:='';
+       while (identifier<>IDStr) and (Nr<NRes) do begin
+         Inc(Nr);
+         Inc(Counter,3);
+         ID_count:=0;
+         ID_buf:=char(TFullVet(RES^)[Counter]);
+         Inc(Counter);
+         if ID_buf<>#255 then begin
+           while ID_buf<>#0 do begin
+             inc(ID_count);
+             IDStr[ID_count]:=ID_buf;
+             ID_buf:=char(TFullVet(RES^)[Counter]);
+             Inc(Counter);
+           end;
+           IDStr[0]:=char(ID_count);
+           ID_String:=true;
+         end
+         else begin
+           Inc(Counter,2);
+           ID_String:=false;
+         end;
+         pD:=@Intestazione[9];
+         pS:=@TFullVet(RES^)[Counter];
+         TVetIntest(pD^):=TVetIntest(pS^);
+         Inc(Counter,DimIntest);
+         DimX:=word(Intestazione[8+11]);
+         DimY:=word(Intestazione[8+11+4]);
+         BMPSize:=(DimX+7-((DimX+7) mod 8))*DimY div 2;
+         if (identifier=IDStr) and ID_String then begin
+           IntPref:=19778;  {66-77}
+           IntDimFile:=@Intestazione[3];
+           Intestazione[7]:=0;
+           Intestazione[8]:=0;
+           IntDimFile^:=BMPSize+118;
+           GetMem(ResourcePointer,IntDimFile^);
+           GetBMPResource_IDStr:=IntDimFile^;
+           TIntest(ResourcePointer^):=Intestazione;
+           pD:=@PVet(ResourcePointer)^[119];
+           pS:=@TFullVet(RES^)[Counter];
+           asm
+             push   ds
+             les    di,pD
+             lds    si,pS
+             mov    cx,word(BMPSize)
+             rep    movsb
+             pop    ds
+           end;
+           break;
+         end
+         else
+         Inc(Counter,BMPSize);
+       end;
+     end;
+
+
+   function GetBMPResource_IDNum(RES:pointer; NRes:word; identifier:word; var ResourcePointer:pointer):longint;
+     const
+         DimIntest = 110;
+     type
+         TFullVet = array[1..65520] of byte;
+         TVetIntest = array[1..DimIntest] of byte;
+         TVet = array[1..119] of byte;
+         PVet = ^TVet;
+         TIntest = array[1..118] of byte;
+         TResPref = array[1..3] of byte;
+         TWord = array[1..2] of byte;
+     var
+         Intestazione:TIntest;
+         IntPref:word absolute Intestazione;
+         IntDimFile:^LongInt;
+         ID_Word:boolean;
+         IDStr:string;
+         ID:word;
+         ID_buf:char;
+         Nr,
+         Counter,
+         DimX,DimY:word;
+         BMPSize:Longint;
+         pS,pD:pointer;
+     begin
+       ResourcePointer:=nil;
+       Counter:=1;
+       GetBMPResource_IDNum:=0;
+       Nr:=0;
+       ID:=0;
+       while (identifier<>ID) and (Nr<NRes) do begin
+         Inc(Nr);
+         Inc(Counter,3);
+         ID_buf:=char(TFullVet(RES^)[Counter]);
+         Inc(Counter);
+         if ID_buf<>#255 then begin
+           while ID_buf<>#0 do begin
+             ID_buf:=char(TFullVet(RES^)[Counter]);
+             Inc(Counter);
+           end;
+           ID_Word:=false;
+         end
+         else begin
+           TWord(ID)[1]:=TFullVet(RES^)[Counter];
+           TWord(ID)[2]:=TFullVet(RES^)[Counter+1];
+           Inc(Counter,2);
+           ID_Word:=true;
+         end;
+         pD:=@Intestazione[9];
+         pS:=@TFullVet(RES^)[Counter];
+         TVetIntest(pD^):=TVetIntest(pS^);
+         Inc(Counter,DimIntest);
+         DimX:=word(Intestazione[8+11]);
+         DimY:=word(Intestazione[8+11+4]);
+         BMPSize:=(DimX+7-((DimX+7) mod 8))*DimY div 2;
+         if (identifier=ID) and ID_Word then begin
+           IntPref:=19778;  {66-77}
+           IntDimFile:=@Intestazione[3];
+           Intestazione[7]:=0;
+           Intestazione[8]:=0;
+           IntDimFile^:=BMPSize+118;
+           GetMem(ResourcePointer,IntDimFile^);
+           GetBMPResource_IDNum:=IntDimFile^;
+           TIntest(ResourcePointer^):=Intestazione;
+           pD:=@PVet(ResourcePointer)^[119];
+           pS:=@TFullVet(RES^)[Counter];
+           asm
+             push   ds
+             les    di,pD
+             lds    si,pS
+             mov    cx,word(BMPSize)
+             rep    movsb
+             pop    ds
+           end;
+           break;
+         end
+         else
+         Inc(Counter,BMPSize);
+       end;
+     end;
+
+
+end.

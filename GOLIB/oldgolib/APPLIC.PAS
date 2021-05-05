@@ -1,0 +1,1501 @@
+{ Ernesto CIANCIOTTA Productions }
+
+{ *************************************** }
+{ *                                     * }
+{ * Modulo della libreria GOLIB per la  * }
+{ * gestione delle applicazioni.        * }
+{ *                                     * }
+{ * Scritto con Turbo Pascal 7.0        * }
+{ *                                     * }
+{ *************************************** }
+
+{$D+}
+{$L+}
+
+UNIT Applic;
+
+INTERFACE
+
+uses
+     codici,
+     crt,
+     dos,
+     graph,
+     keyboard,
+     mouse,
+     graftool,
+     golib_h,
+     dispfile,
+     golib9;
+
+
+type
+     OPApplication = ^OTApplication;
+     OTApplication = object (OTGolibObject)
+        constructor InitApplication;
+        procedure   RunApplication; virtual;
+        destructor  ShutDown; virtual;
+        procedure ExecMessage(var Message:TMessage); virtual;
+     private
+        Windows: OPView;
+        resourcePath: PChar;
+        procedure   LoadResources;
+        procedure   LoadAccelerators;
+     end;
+
+
+var
+
+    { TRUE se viene intercettato un oggetto che pu• reagire all'messaggio }
+    WorkAreaDetected:boolean;
+
+    PersistentCursor:boolean;
+
+   { Memorizza gli oggetti da cancellare una volta che il controllo Š
+     tornato a gestore dell'applicazione. }
+   procedure DeleteObject(obj:OPView);
+
+   { Alloca una serie di KeyEvents
+     - Events Š una struttura TKeyEvArray il cui primo elemento indica
+     il numero di eventi fino alla fine dell'array.
+     - obj Š un puntatore all'oggetto che ha allocato gli eventi. }
+   procedure AllocKeyEvents(obj:OPView; var events);
+   { Registra una serie di KeyEvents }
+   procedure RecKeyEvents(obj:OPView; var events);
+
+
+   { procedura per l'allocazione degli Hot Spots }
+   procedure MarkHotSpot(IDCur:word;var cur; HX,HY:integer);
+   procedure DeleteHotSpot(IDCur:word);
+   procedure SetMouseCursor(IDCur:word);
+
+
+
+   {************* Interfacciamento con EventController ****************}
+var
+    { Contatori di informazioni sul ritardo di eventi da parte degli
+      INPUT DEVICE }
+    IDevDelayC,     { General Input Device Delay Counter }
+    KBDelayC,       { Keyboard Device Delay Counter }
+    MMDelayC,       { Mouse Device Movement Delay Counter }
+    MBDelayC: word; { Mouse Device Buttons Delay Counter }
+
+    TimeCounter: longint; { Contatore delle volte in cui Š stato chiamato
+                            l'interrupt 1Ch }
+
+   procedure SetMultipleMClickDelay(milliseconds:longint);
+   { Alloca un messaggio nel buffer se questo non Š pieno }
+   procedure AllocMessage(var Message:TMessage);
+   { Cancella il primo messaggio della lista }
+   procedure DeleteMessage;
+   { Svuota il buffer degli Messagi }
+   procedure DeleteAllMessages;
+   { Verifica che sia presente un messaggio in lista e restiuisce il tipo del
+     primo messaggio il lista }
+   function MessagePresent:word;
+   { Copia il primo messaggio in attesa di essere processato. }
+   function VisNextMessage(var Message:TMessage):word;
+   { Copia e cancellazione del primo messaggio in attesa di essere processato. }
+   function GetNextMessage(var Message:TMessage):word;
+   { Restituisce il prossimo messaggio in lista e se non ce ne sono aspetta
+     che ce ne sia uno. }
+   procedure WaitNextMessage(var Message:TMessage);
+   { Restituisce il primo messaggio da mouse che viene allocato nel buffer.
+     Se in mask non Š impostato il MultiClicking allora questa procedura
+     trasformer… tutti i messaggi di multi-clicking nei corrispondenti
+     messaggi senza il multi-clicking. }
+   procedure WaitNextMouseMessage(var Message:TMessage; mask:byte);
+   { Come sopra ma ha solo una funzione di controllo sulla allocazione di
+     messaggi da mouse. Se ne trova uno allora lo registra in message,
+     altrimenti registra in message LasSysMessage. }
+   procedure GetLastMouseMessage(var Message:TMessage; mask:byte);
+   { TRUE se il buffer Š pieno }
+   function MessageBufferFull:boolean;
+   { Rispettivamente bloccano e riattivano la scansione dei Messagi }
+   procedure StopEvScanning;
+   procedure StartEvScanning;
+
+
+   { Chiamare solo dopo che Š stato attivato il mouse }
+   procedure InitMessageManager;
+
+   procedure InitMessageManagerF3;
+
+
+
+
+
+{*** Application Manager API ***}
+
+   { Dato un messaggio da mouse restituisce una maschera compatibile con il
+     campo OTView.MouseReactionMask. }
+   function MouseMessageValid(var MouseMessage:word; mask:byte):boolean;
+   { Procedura da che fa partire l'applicazione }
+   procedure StartApplication;
+   { Blocca l'attenzione dell'application controller sull'oggetto
+     correntemente puntato se obj=nil, oppure o su obj se obj<>nil.
+     Con il blocco tutti i mesaggi creati da dispositivi di input verranno
+     spediti alloggetto sul quale Š bloccata l'attenzione. }
+   procedure LockObjPointed(obj:OPView);
+   { Elimina l'effetto di "LockObjPointed". }
+   procedure UnlockObjPointed;
+
+
+
+
+
+   procedure Wait(Seconds:real);
+
+
+
+IMPLEMENTATION
+
+uses
+     memman;
+
+
+ {$L APPCTRL.OBJ}
+ {L EVCTRL2.OBJ}
+
+
+ {$I SysCur.pcr}
+
+
+var
+    APPLICATION : OPGolibObject;  { Puntatore all'applicazione attiva }
+
+
+    OTBuffer_Alloc:pointer;
+
+
+
+ { ------------------------------------------------------------------
+     Gestore dell'applicazione che deve essere lanciato per farla
+     funzionare
+ ------------------------------------------------------------------- }
+
+type
+     { Strutture della lista degli oggetti da cancellare quando il controllo
+       torna a ExecuteNextEvent. }
+
+     PObjToDelete = ^TObjToDelete;
+     TObjToDelete = record
+        obj:OPView;
+        next:PObjToDelete
+     end;
+
+     PObjToDeleteList = ^TObjToDeleteList;
+     TObjToDeleteList = PObjToDelete;
+
+     {
+       Struttura dell'albero contenente i KeyEvents associati ai vari oggetti.
+       La struttura del ramo prevende che gli eventi vengano allocati come un
+       vettore di word. Il ramo viene collegato all'albero assegnando il puntatore
+       alla struttura di tipo TKeyEvArray al nodo. Quindi il ramo pu• risiedere
+       in un segmento dati o nello HEAP. Solo nell'ultimo caso Š possibile un
+       discorso di distruzione automatica del ramo.
+     }
+
+     { Struttura Albero }
+     PKEvents = ^TKEvents;
+     { Struttura Nodo }
+     TKEvents = record
+       Obj:OPView;
+       Events:PKeyEvArray;
+       Resident:boolean;
+       succ:PKEvents;
+     end;
+
+     { Struttura della lista dei cursori per la gestione degli Hot Spots }
+     PCursor = ^TCursor;
+     TCursor = record
+       ID:word;                     { Identificatore }
+       CursorMap:TGraphicCursor;    { Mappa di bits  }
+       HotX, HotY: integer;
+       NumInstallazioni: word;      { Numero di volte in cui Š stato instalato
+                                      lo stesso cursore }
+       next:PCursor;                { puntatore al successivo }
+     end;
+
+const
+       { Lista degli oggetto da cancellare }
+       ObjToDeleteList: PObjToDeleteList = nil;
+
+       { Albero }
+       KeyEvents: PKEvents = nil;
+       LastNode:  PKEvents = nil;
+       { Lista dei cursori per gli Hot Spots (strutturata a pila) }
+       Cursors: PCursor = nil;
+
+var
+       ButtonPressed:word;
+       {point_View:OPView;}
+
+
+
+   procedure Wait(Seconds:real);
+     begin
+       TimeCounter:=0;
+       while TimeCounter/18.2 < Seconds do;
+     end;
+
+
+   procedure DeleteObject(obj:OPView);
+     var p:PObjToDelete;
+         present:boolean;
+     begin
+       present:=false;
+       p:=ObjToDeleteList^;
+       while not present and (p<>nil) do begin
+         if p^.obj=obj then present:=true;
+         p:=p^.next;
+       end;
+       if not present then begin
+         new(p);
+         p^.obj:=obj;
+         p^.next:=ObjToDeleteList^;
+         ObjToDeleteList^:=p;
+       end;
+     end;
+
+
+   {**********************************************************************}
+   {- Key Events API                                                     -}
+   {**********************************************************************}
+
+
+
+   procedure AllocKE(var events; _obj:OPView; __Resident:boolean);
+     var nodo:PKEvents;
+         eventi:TKeyEvArray absolute events;
+     begin
+       {creazione nodo}
+       new(nodo);
+       with nodo^ do begin
+         Obj:=_obj;
+         Events:=@eventi;
+         Resident:=__Resident;
+         succ:=nil;
+       end;
+       { aggiunta a coda del nodo all'albero }
+       if KeyEvents=nil then begin
+         KeyEvents:=nodo;
+         LastNode:=nodo;
+       end
+       else begin
+         LastNode^.succ:=nodo;
+         LastNode:=nodo;
+       end;
+     end;
+
+
+   procedure AllocKeyEvents(obj:OPView; var events);
+     begin
+       AllocKE(events,obj,false);
+     end;
+
+
+   procedure RecKeyEvents(obj:OPView; var events);
+     begin
+       AllocKE(events,obj,true);
+     end;
+
+
+
+   {***********************************************************************}
+   {-  Hot Spots API.                                                     -}
+   {***********************************************************************}
+
+
+   procedure MarkHotSpot(IDCur:word;var cur; HX, HY:integer);
+     var c:PCursor;
+         cursore:TGraphicCursor absolute cur;
+     begin
+       { Controlla se Š gi… presente un cursore con lo stesso codice
+         di identificazione. }
+       c:=Cursors;
+       while c<>nil do begin
+         if c^.ID=IDCur then begin
+           inc(c^.NumInstallazioni);
+           exit;
+         end;
+         c:=c^.next;
+       end;
+       { Il cursore non Š gi… presente e quindi viene aggiunto alla lista. }
+       new(c);
+       with c^ do begin
+         ID:=IDCur;
+         CursorMap:=cursore;
+         HotX:=HX;
+         HotY:=HY;
+         NumInstallazioni:=1;
+         next:=Cursors;
+       end;
+       Cursors:=c;
+     end;
+
+
+   procedure DeleteHotSpot(IDCur:word);
+     var prec,c:PCursor;
+     begin
+       if Cursors=nil then exit;
+       if Cursors^.ID=IDCur then begin
+         c:=Cursors;
+         Cursors:=Cursors^.next;
+         dispose(c);
+       end;
+       { Controlla esiste il cursore. }
+       prec:=Cursors;
+       c:=Cursors^.next;
+       while c<>nil do begin
+         if c^.ID=IDCur then begin
+           if c^.NumInstallazioni>1
+           then begin
+             dec(c^.NumInstallazioni);
+             exit;
+           end
+           else begin
+             prec^.next:=c^.next;
+             dispose(c);
+             exit;
+           end;
+         end;
+         prec:=c;
+         c:=c^.next;
+       end;
+     end;
+
+
+const
+    { Indica se il cursore Š quello standard oppure no }
+    SysCursor:boolean = true;
+
+
+   procedure SetMouseCursor(IDCur:word);
+     var c:PCursor;
+     begin
+       c:=Cursors;
+       while c<>nil do begin
+         with c^ do if ID=IDCur then begin
+           DefineGraphicCursor(CursorMap,HotX,HotY);
+           SysCursor:=false;
+           exit;
+         end;
+         c:=c^.next;
+       end;
+       if not SysCursor then begin
+         DefineGraphicCursor(syscur_cursore,0,0);
+         SysCursor:=true;
+       end;
+     end;
+
+
+
+     {*******************************************************************}
+     {--------------------- Gestione interna modulo ---------------------}
+     {*******************************************************************}
+type
+     TDevInfo = record
+        ButtonStatus:byte;
+        case byte of
+        0: ( Null1    : word;
+             Null2    : word;
+             KeyStroke: word;
+             shifts   : word;
+            );
+        1: ( TimeCount: word;
+             X        : word;
+             Y        : word;
+            );
+     end;
+
+
+const
+      MessageSize = sizeof(TMessage);
+      CopySteps   = MessageSize div 2;
+      OffSet_MessageField = 2;
+
+      MaxNumMessages = 100; { Numero massimo di messaggi memorizzabili }
+      MsgBufferSize = MaxNumMessages * MessageSize;  { Dimensione del MESSAGE BUFFER }
+
+      DevInfoSize  = sizeof(TDevInfo);
+      DevInfoWords = sizeof(TDevInfo) div 2;
+      MaxNumInfos = 50; { Numero massimo di informazioni memorizzabili }
+      DevInfoBufferSize = MaxNumInfos * sizeof(TDevInfo);  { Dimensione del DEVICE INFO BUFFER }
+
+
+var
+    (* MESSAGE BUFFER *)
+    MsgBuffer     : OTBuffer; { Buffer in cui verrano memorizzati i messaggi. }
+    LastSysMessage: TMessage; { Ultimo messaggio che Š stato creato dall'event
+                                controller }
+
+
+    (* DEVICE INFO BUFFER *)
+    DevInfoBuffer: OTBuffer; { Buffer in cui verranno memorizzati cambiamenti
+                               di stato dei dispositivi di input. }
+    LastDevInfo  : TDevInfo; { Ultima informazione rilevata }
+
+var
+    MultipleMClickDelay: word;   { numero di ritardi del INT 1Ch }
+
+    Int1C, IntF3: procedure;
+
+    { variabili relative di controllo di MouseEventController }
+    precBtnStatus:word;
+    precMCX,precMCY:word;
+
+
+
+const
+    { I primi 3 bits indicano se Š in corso il periodo di tempo in cui si pu•
+      verificare un MULTI-PRESS del relativo bottone.
+      Gli ultimi 3 bits indicano se Š in corso il periodo di tempo in cui si pu•
+      verificare un MULTI-RELEASE del relativo bottone.
+
+              ÚÄÄÄÄÄÄÄÄÄÄÄ¿ÄÄÄÄÄÄÄÄÄÄÄ¿
+              ³ M-RELEASE ³  M-PRESS  ³
+      ÉÍÍÍÑÍÍÍÑÍÍÍÑÍÍÍÑÍÍÍÑÍÍÍÑÍÍÍÑÍÍÍ»
+      º \ ³ \ ³ C ³ R ³ L ³ C ³ R ³ L º
+      ÈÍÍÍÏÍÍÍÏÍÍÍÏÍÍÍÏÍÍÍÏÍÍÍÏÍÍÍÏÍÍÍ¼
+
+
+      Se il relativo bit Š 1 allora il periodo e in corso.
+
+      Se il periodo non Š in corso, allora esso inizia non appena il rispettivo
+      bottone viene premuto o rilasciato a seconda che si considerino i primi o
+      gli ultimi bits.
+
+      Tale periodo termina quando il contatore del periodo assume valore
+      maggiore a MultipleMClickDelay.
+    }
+    DelayActive: byte = 0;
+
+    { Contatori per il controllo dell'intervallo di tempo in cui  si pu•
+      verificare un click multiplo dei bottoni del mouse.
+      I contatori sono differenti per i vari tasti del mouse e per il tipo
+      di click (pressione o rilascio del bottone).
+      Questi vengono sempre incrementati da "AppController", ma successivamente
+      resettati da "MouseEventController" se non Š in corso il periodo di
+      clicking multiplo del relativo bottone.
+
+      Se il periodo Š in corso allora il contatore viene incrementato fino a
+      quando non Š maggiore a MultipleMClickDelay. Quando questo si verifica
+      il periodo viene interrotto.
+    }
+
+    PressDelayL: word = 0;  { Left   }
+    PressDelayR: word = 0;  { Right  }        {*****************************}
+    PressDelayC: word = 0;  { Center }        {**   Non modificare il     **}
+                                              {*    tipo e l'ordine di     *}
+    ReleaseDelayL: word = 0;  { Left   }      {**   queste variabili      **}
+    ReleaseDelayR: word = 0;  { Right  }      {*****************************}
+    ReleaseDelayC: word = 0;  { Center }
+
+    { Questo vettore memorizza il numero delle pressioni e dei rilasci dei
+      bottoni che si verificano durante il periodo di tempo in cui tale evento
+      pu• verificarsi.
+
+      I primi 3 bytes si riferiscono alla pressione, mentre gli ultimi 3 bytes
+      si riferiscono al rilascio.
+
+      Quando un tasto viene premuto, se il relativo periodo di multi-clicking
+      non Š in corso, allora esso viene attivato e il numero dei clicks settato
+      a 1.
+      Se il relativo periodo di multi-clicking Š in corso allora il numero dei
+      clicks viene incrementato.
+
+      Quando il periodo di multiclicking viene interrotto allora il relativo
+      bitInfo deve essere settato a 0.
+    }
+                                   {ÚÄÄÄÄÄÄÄÄÄÄÄ¿ÄÄÄÄÄÄÄÄÄÄÄ¿}
+                                   {³PRESS INFO ³RELEASE INF³}
+    btnInfo: array [1..6] of byte = ( 0 , 0 , 0 , 0 , 0 , 0 );
+                                   {  L , R , C , L , R , C  }
+
+   { *** Funzioni publiche *** }
+
+   procedure SetMultipleMClickDelay(milliseconds:longint);
+     begin
+       MultipleMClickDelay:=round(milliseconds/18.2);
+     end;
+
+
+   procedure AllocMessage(var Message:TMessage);
+     begin
+       MsgBuffer.Alloc(Message);
+     end;
+
+
+   procedure DeleteMessage;
+     begin
+       MsgBuffer.Delete;
+     end;
+
+
+   procedure DeleteAllMessages;
+     begin
+       MsgBuffer.DeleteAll;
+       precMCX:=0;
+       precMCY:=0;
+       precBtnStatus:=0;
+     end;
+
+
+   function MessagePresent:word;
+     var p:PMessage;
+     begin
+       if MsgBuffer.Empty then MessagePresent:=0
+       else begin
+         p:=MsgBuffer.GetElementPtr;
+         MessagePresent:=p^.Message;
+       end;
+     end;
+
+
+   { Copia in Message il primo messaggio in lista }
+   function VisNextMessage(var Message:TMessage):word;
+     begin
+       if MsgBuffer.Empty then VisNextMessage:=0
+       else begin
+         MsgBuffer.VisElement(Message);
+         VisNextMessage:=Message.Message;
+       end;
+     end;
+
+
+   { Copia in Message il primo messaggio in lista e lo cancella dal buffer }
+   function GetNextMessage(var Message:TMessage):word;
+     begin
+       if MsgBuffer.Empty then GetNextMessage:=0
+       else begin
+         MsgBuffer.GetElement(Message);
+         GetNextMessage:=Message.Message;
+       end;
+     end;
+
+
+   procedure WaitNextMessage(var Message:TMessage);
+     begin
+       DeleteMessage;
+       {$IFNDEF Installa1Ch}
+         while MsgBuffer.Empty do asm
+           int  0F3h
+         end;
+       {$ELSE}
+         while MsgBuffer.Empty do;
+       {$ENDIF}
+       MsgBuffer.VisElement(Message);
+     end;
+
+
+   {
+     - se il buffer Š pieno salva l'ultimo in MsgSave e lo cancella
+     - alloca l'evento del mouse come last;
+     - lo copia in Message;
+     - lo cancella dalla coda
+   }
+   procedure WaitNextMouseMessage(var Message:TMessage; mask:byte);
+     var Full:boolean;
+         MsgSave:TMessage;
+         MsgPtr:PMessage;
+     begin
+       Full:=MsgBuffer.Full;
+       if Full then begin
+         { Si crea spazio nel buffer per un messaggio }
+         Full:=true;
+         MsgPtr:=MsgBuffer.GetLastElementPtr;
+         MsgSave:=MsgPtr^;
+         MsgBuffer.DeleteLast;
+       end;
+       while true do begin
+         repeat
+           asm
+              int 0F3h
+           end;
+         until MsgBuffer.ThereAreNews;
+         MsgPtr:=MsgBuffer.GetLastElementPtr;
+         Message:=MsgPtr^;
+         MsgBuffer.DeleteLast;
+         if ((Message.Message shr 12)=$8) and
+             MouseMessageValid(Message.Message,mask) then break;
+       end;
+       if Full then MsgBuffer.Alloc(MsgSave);
+     end;
+
+
+   procedure GetLastMouseMessage(var Message:TMessage; mask:byte);
+     var Full:boolean;
+         MsgSave:TMessage;
+         MsgPtr:PMessage;
+     begin
+       Full:=MsgBuffer.Full;
+       if Full then begin
+         { Si crea spazio nel buffer per un messaggio }
+         Full:=true;
+         MsgPtr:=MsgBuffer.GetLastElementPtr;
+         MsgSave:=MsgPtr^;
+         MsgBuffer.DeleteLast;
+       end;
+       asm
+          int 0F3h
+       end;
+       if MsgBuffer.ThereAreNews then begin
+         MsgPtr:=MsgBuffer.GetLastElementPtr;
+         Message:=MsgPtr^;
+         MsgBuffer.DeleteLast;
+         if not (((Message.Message shr 12)=$8) and
+                 MouseMessageValid(Message.Message,mask))
+           then Message:=LastSysMessage;
+       end
+       else Message:=LastSysMessage;
+       if Full then MsgBuffer.Alloc(MsgSave);
+     end;
+
+
+   { Verifica che il buffer sia pieno }
+   function MessageBufferFull:boolean;
+     begin
+       MessageBufferFull:=MsgBuffer.Full;
+     end;
+
+
+
+   { *** Funzioni private *** }
+
+   procedure CreateBuffers;
+     begin
+       MsgBuffer.CreateBuffer(sizeof(TMessage),MaxNumMessages);
+       { Reset di LastEv }
+       asm
+         cld
+         push     ds
+         pop      es
+         lea      di,LastSysMessage
+         xor      ax,ax
+         mov      cx,CopySteps
+         rep      stosw
+       end;
+       DevInfoBuffer.CreateBuffer(sizeof(TDevInfo),MaxNumInfos);
+     end;
+
+
+   procedure DestroyBuffers;
+     begin
+       MsgBuffer.DestroyBuffer;
+       DevInfoBuffer.DestroyBuffer;
+     end;
+
+
+   procedure PutMessageInBuffer; 
+     begin
+       MsgBuffer.Alloc(LastSysMessage);
+     end;
+
+
+
+var
+    { Utilizzata come variabile di passaggio da MouseMessageController. }
+    MButton:byte;
+
+            {********* Rilevatore di eventi da mouse *********}
+   procedure MouseEventController(row,column,btnStatus:word); near;
+   var btC,btR,btL: byte;
+   begin
+       btnStatus:=btnStatus and $0007;  { Annulla tutti i bits che si riferiscono a bottoni }
+       if (precBtnStatus=btnStatus) and
+          (precMCY=row) and
+          (precMCX=column) then
+       begin
+         asm
+           { In questa parte si azzerano solo i contatori ClickDelayX }
+            mov     dx,0801h              { DL e DH vengono usate come maschere
+                                            rispettivamente per la pressione e per
+                                            il rilascio }
+            lea     di,PressDelayL        { DI viene utilizzato come indice per i
+                                            contatori }
+            mov     cx,3
+
+         @loop:
+           { Controllo per la pressione }
+            test    DelayActive,dl        { Controlla il bit X di DelayActive   }
+            jnz     @In_Corso1	          { Se z=0 allora il periodo Š in corso }
+            mov	    WORD PTR ds:[di],0    { Se non in corso allora azzera PressDelayX }
+         @In_Corso1:
+
+            add     di,6                  { Aggiorna l'indice                   }
+
+           { Controllo per il rilascio }
+            test    DelayActive,dh        { Controlla il bit X di DelayActive   }
+            jnz     @In_Corso2            { Se z=0 allora il periodo Š in corso }
+            mov	    WORD PTR ds:[di],0    { Se non in corso allora azzera ReleaseDelayX }
+
+         @In_Corso2:
+            sub     di,4                  { Aggiorna l'indice                   }
+            shl     dx,1                  { Aggiorna le maschere DL e DH }
+            loop    @loop
+         end;
+         exit;
+       end;
+       {
+         Determinazione della pressione/rilascio dei tasti.
+         1. Confronta precBtnStatus e BtnStatus
+            - Se il bit Š prima 0 e poi 1 allora Š stato premuto
+            - Se il bit Š prima 1 e poi 0 allora Š stato rilasciato
+         2. Il risultato del confronto viene notificato nelle variabili
+            btX.
+            - btX = 0 => nessun evento
+            - btX = 1 => premuto
+            - btX = 2 => rilasciato
+       }
+     asm
+        call    FAR PTR GetShiftFlags   { Legge lo stato degli shifts della tastiera }
+        cli
+        mov     LastSysMessage.Shifts,ax
+    	mov 	ax,btnStatus
+        xor 	ax,precBtnStatus   { i bits settati a 1 in AX indicano i bottoni
+                                     che hanno cambiato stato }
+        { A questo punto pu• succedere che pi— bottoni abbiano cambiato stato e
+          quindi Š necessario determinare quale di essi deve essere considerato.
+          A tal fine viene utilizzata la priorit… LEFT-RIGHT-CENTER.
+
+          In AX quindi vengono azzerati tutti i bits a sinistra del primo bit
+          settato. }
+        xor     dx,dx              { Determina in numero del bottone in DX }
+        cmp     ax,0
+        je      @Fuori
+        mov     bl,1
+        mov     cx,2
+
+     @Cerca:
+        test    al,bl
+        jnz     @Trovato
+        shl     bl,1
+        loop    @Cerca
+
+     @Trovato:
+        mov     dl,3
+        sub     dl,cl              { Determina in numero del bottone in DX }
+        jcxz    @Fuori
+        not     bl
+
+     @Azzera:
+        rol     bl,1
+        and     al,bl              { Azzera i bits a sinistra del primo settato }
+        loop    @Azzera
+
+     @Fuori:
+        mov     MButton,dl         { Assegna il numero del bottone }
+        cmp     dl,0               { Controlla se Š stato premuto un tasto        }
+        je      @TastoPremuto
+        mov     MBDelayC,0         { Azzera il Mouse Device Buttons Delay Counter }
+
+     @TastoPremuto:
+
+        mov 	bx,bp
+        sub 	bx,4               { BX viene utilizzato come indice         }
+        add     bx,dx              { In DX c'Š il numero del bottone         }
+
+        mov     btL,0              { Default = Nessun evento                 }
+        mov     btR,0              { Default = Nessun evento                 }
+        mov     btC,0              { Default = Nessun evento                 }
+
+        cmp     MButton,0
+        je  	@btX_Fine          { Se _Button_=0 allora btX non ha cambiato stato }
+        test 	btnStatus,ax       { Controlla il bit di btnStatus           }
+        jnz 	@btX_1             { Se z=0 allora il tasto Š stato premuto  }
+        mov 	BYTE PTR ss:[bx],2 { btX Š stato rilasciato                  }
+        jmp 	@btX_Fine
+
+     @btX_1:
+        mov 	BYTE PTR ss:[bx],1 { btX Š stato premuto                     }
+        or      MButton,80h        { Setta l'ultimo bit di _Button_ per indicare
+                                     che Š stato premuto }
+     @btX_Fine:
+
+       { Determinato btX bisogna verificare che il periodo corrispondente
+         sia attivo oppure no ed agire di conseguenza. }
+
+        push    ss
+        pop     es                    { Casica in ES il valore di SS        }
+        lea     si,btnInfo            { Carica in SI l'offset di btnPressInfo }
+        mov     dx,0801h              { DL e DH vengono usate come maschere
+                                        rispettivamente per la pressione e per
+                                        il rilascio }
+        lea     di,PressDelayL        { DI viene utilizzato come indice per i
+                                        contatori }
+        mov 	bx,bp
+        sub 	bx,3                  { BX viene utilizzato come indice per le
+                                        variabili btX }
+        mov     cx,3
+
+     @loop2:
+       { Controllo per la pressione }
+        test	DelayActive,dl        { Controlla il bit X di DelayActive   }
+        jnz     @In_Corso1	      { Se z=0 allora il periodo Š in corso }
+
+     @Non_in_corso1:
+        cmp     BYTE PTR es:[bx],1    { Verifica che il bottone X sia stato premuto }
+        je      @Premuto
+     @Non_Premuto:
+        mov	WORD PTR ds:[di],0    { Se non in corso e btX non Š stato premuto
+                                        allora azzera PressDelayX  }
+        jmp     @001
+     @Premuto:
+        or      DelayActive,dl        { Attiva il periodo di multi-clicking }
+        mov     BYTE PTR ds:[si],1    { Imposta a 1 il numero di pressioni nel
+                                        periodo }
+        jmp     @001
+
+     @In_Corso1:
+        cmp     BYTE PTR es:[bx],1    { Verifica che il bottone X sia stato premuto }
+        jne     @001
+        inc     BYTE PTR ds:[si]      { Incrementa il numero di pressioni nel
+                                        periodo }
+     @001:
+
+        inc     si
+        inc     si
+        inc     si
+
+        add     di,6
+
+       { Controllo per il rilascio }
+        test	DelayActive,dh        { Controlla il bit X di DelayActive   }
+        jnz     @In_Corso2            { Se z=0 allora il periodo Š in corso }
+
+     @Non_in_corso2:
+        cmp     BYTE PTR es:[bx],2    { Verifica che il bottone X sia stato rilasciato }
+        je      @Rilasciato
+     @Non_Rilasciato:
+        mov	WORD PTR ds:[di],0    { Se non in corso e btX non Š stato premuto
+                                        allora azzera ReleaseDelayX  }
+        jmp     @002
+     @Rilasciato:
+        or      DelayActive,dh        { Attiva il periodo di multi-clicking }
+        mov     BYTE PTR ds:[si],1    { Imposta a 1 il numero di rilasci nel
+                                        periodo }
+        jmp     @002
+
+     @In_Corso2:
+        cmp     BYTE PTR es:[bx],2    { Verifica che il bottone X sia stato rilasciato }
+        jne     @002
+        inc     BYTE PTR ds:[si]      { Incrementa il numero dei rilasci nel
+                                        periodo }
+     @002:
+        { Aggiornameto indici }
+        dec     si
+        dec     si
+        sub     di,4
+        inc     bx
+
+        shl     dx,1                  { Aggiorna le maschere DL e DH }
+
+        loop    @loop2
+
+        mov     IDevDelayC,0          { Azzera il General Input Device Delay Counter }
+        mov     ax,row
+        cmp     ax,precMCY            { Confronta row con precMCY }
+        mov     precMCY,ax
+        mov     LastSysMessage.Mcy,ax
+        je      @003
+        mov     MMDelayC,0            { Azzera il Mouse Device Movement Delay Counter }
+     @003:
+        mov     ax,column
+        cmp     ax,precMCX
+        mov     precMCX,ax
+        mov     LastSysMessage.Mcx,ax
+        je      @004
+        mov     MMDelayC,0            { Azzera il Mouse Device Movement Delay Counter }
+     @004:
+        mov     ax,btnStatus
+        mov     precBtnStatus,ax
+
+        { Determinazione dei clicks di pressione o di rilascio }
+        xor     al,al                 { In AL verr… messo in numero di clicks }
+        cmp     MButton,0
+        je      @FuoriClicks
+
+        xor     bh,bh
+        mov     bl,MButton            { Carica in BX _Button_ per poi usare BX
+                                        come indice }
+        and     bx,0003h              { Prende in BX il numero del bottone  }
+        dec     bx
+        lea     si,btnInfo            { Carica l'offset di btnInfo in SI    }
+        test    MButton,80h           { Controlla se il bottone Š stato rilasciato }
+        jz      @Released             { Se z=1 allora il bottone Š stato rilasciato }
+
+     @Pressed:
+        mov     al,ds:[si+bx]
+        jmp     @FuoriClicks
+
+     @Released:
+        mov     al,ds:[si+bx+3]
+
+     @FuoriClicks:
+        mov     LastSysMessage.Clicks,al
+
+     { Determinazione del messaggio generato dal mouse }
+
+        mov     ah,80h
+        cmp     al,1                  { Controlla il numero di clicks }
+        jna     @NoMultiClick         { Se <= salta                   }
+        or      ah,01h
+
+     @NoMultiClick:
+
+        mov     al,MButton
+        mov     LastSysMessage.Message,ax
+        mov     LastSysMessage.HNDL,_GOLIB_SYSTEM_
+        call    PutMessageInBuffer
+     end;
+   end;
+
+
+
+var
+    { Interrupts da usare per le operazioni con la tastiera di GetKeyStroke,
+      CheckForKeyStroke e GetShiftFlags. }
+    _Get_Int_   : byte;
+    _Check_Int_ : byte;
+    _Shifts_Int_: byte;
+
+
+                {********* Event Controller *********}
+   procedure EventController; external;
+   procedure CounterRoutine; external;
+   procedure EventCtrlSetup;  external;
+   procedure StopEvScanning; external;
+   procedure StartEvScanning; external;
+
+
+   procedure MessageComposer;
+     var Message:TMessage;
+         DevInfo:TDevInfo;
+     begin
+       if DevInfoBuffer.Empty then exit;
+       if TimeCounter=0 then begin
+         { Informazioni relative alla TASTIERA }
+         DevInfoBuffer.GetElement(DevInfo);
+
+       end
+       else begin
+         { Informazioni relative al MOUSE }
+       end;
+     end;
+
+
+   procedure InitMessageManager;
+     begin
+       { Inizializza l'Message Buffer }
+       CreateBuffers;
+       precMCX:=0;
+       precMCY:=0;
+       precBtnStatus:=0;
+       MultipleMClickDelay:=DefaultMultipleMClickDelay;
+       { Effettua il setup di EventController }
+       EventCtrlSetup;
+       { Installa EventController all'interrupt 1Ch }
+       SetIntVec($1C,@EventController);
+     end;
+
+
+   procedure InitMessageManagerF3;
+     begin
+       { Inizializza l'Event Buffer }
+       CreateBuffers;
+       precMCX:=0;
+       precMCY:=0;
+       precBtnStatus:=0;
+       MultipleMClickDelay:=DefaultMultipleMClickDelay;
+       { Effettua il setup di EventController }
+       EventCtrlSetup;
+       { Installa EventController all'interrupt F3h }
+       SetIntVec($1C,@CounterRoutine);
+       SetIntVec($F3,@EventController);
+     end;
+
+
+
+
+
+     {*******************************************************************}
+     {--------------------- Application Controller ----------------------}
+     {*******************************************************************}
+
+{$R-}
+   { procedura per la visita dell'albero }
+   function FindKeyEvs(KeyEv:word; var Message:word): OPView;
+     var nodo:PKEvents;
+         trovato:boolean;
+         i,lim:longint;
+     begin
+       nodo:=KeyEvents;
+       trovato:=false;
+       { esplora i nodi }
+       while nodo<>nil do begin
+         { esplora i rami }
+         lim:=nodo^.Events^[0].KeyStroke;
+         for i:=1 to lim do
+           if nodo^.Events^[i].KeyStroke=KeyEv then begin
+             trovato:=true;
+             break;
+         end;
+         if trovato then break;
+         nodo:=nodo^.succ;
+       end;
+       if trovato then begin
+         FindKeyEvs:=nodo^.Obj;
+         Message:=nodo^.Events^[i].Message;
+       end
+       else FindKeyEvs:=nil;
+     end;
+{$R+}
+
+var
+   ObjectPointed:OPView;
+   QuitApplication:boolean;
+
+const
+   ObjPointingLock:boolean=false;
+
+
+   function GetMouseMask(MouseMessage:word):byte;
+     var mask:byte;
+     begin
+       mask:=0;
+       if (MouseMessage and $0100)<>0 then mask:=rcMultiClick;
+       if (MouseMessage and $0080)<>0 then begin
+         case (MouseMessage and $000F) of
+          1: mask:=mask or rcLPressed;
+          2: mask:=mask or rcRPressed;
+          3: mask:=mask or rcCPressed;
+         end;
+       end
+       else begin
+         case (MouseMessage and $000F) of
+          0: mask:=rcMove;
+          1: mask:=mask or rcLReleased;
+          2: mask:=mask or rcRReleased;
+          3: mask:=mask or rcCReleased;
+         end;
+       end;
+       GetMouseMask:=mask;
+     end;
+
+
+   function MouseMessageValid(var MouseMessage:word; mask:byte):boolean;
+     var MouseMask:byte;
+     begin
+       if (mask and rcMultiClick)=0
+         then MouseMessage:=MouseMessage and $F0FF;
+       MouseMask:=GetMouseMask(MouseMessage);
+       if ((mask and rcMultiClick)=0) and
+          ((MouseMask and rcMultiClick)<>0)
+         then MouseMessageValid:=false
+         else MouseMessageValid:=(MouseMask and mask) <> 0;
+     end;
+
+
+   procedure DispatchSysMessage(var Message:TMessage); forward;
+
+
+   {--- Modulo di preprocessamento del messaggio ---}
+   procedure DispatchMessage(var Message:TMessage);
+     label SaltaDispatching;
+     var Int09:pointer;
+         ModalMode,
+         ValidEvent: boolean;
+         TypeOfEvent:word;
+
+         PreviousList: PObjToDeleteList;
+         obj,
+         LocalDeleteList: PObjToDelete;
+
+         view: OPView absolute obj;
+         precID,
+         HotKeyMessage,
+         HotSpotMessage: word;
+
+         precObjPointed: OPView;
+
+
+     function GetObjectPointed:OPView;
+       const cfValid = cfVisible or cfEnable;
+       var obj:OPView;
+           detected:boolean;
+
+       procedure Scanner(_obj_:OPView);
+         begin
+           while _obj_<>nil do with _obj_^ do begin
+             if ((SysConfig and cfValid)<>0) and
+                ((SysConfig and cfNoEvent)<>cfNoEvent) and
+                r.XYIn(Message.Mcx,Message.Mcy)
+               then begin
+                 if _gruppo_=nil then begin
+                   detected:=true;
+                   obj:=_obj_;
+                   exit;
+                 end
+                 else begin
+                   Scanner(_gruppo_);
+                   if detected then exit;
+                 end;
+               end;
+             _obj_:=_obj_^._down_;
+           end;
+         end;
+
+       begin { GetObjectPointed }
+         detected:=false;
+         obj:=Primo;
+         Scanner(obj);
+         GetObjectPointed:=obj;
+       end;  { GetObjectPointed }
+
+
+     begin { DispatchMessage }
+       { Inizializzazione della lista locale degli oggetti da cancellare }
+       LocalDeleteList:=nil;
+       PreviousList:=ObjToDeleteList;
+       ObjToDeleteList:=@LocalDeleteList;
+       { Fine inizializzazione }
+       { Determinazione del tipo di messaggio }
+       case (Message.Message shr 12) of
+         $1: TypeOfEvent:=EvSysMessage;
+         $8: TypeOfEvent:=EvMouse;
+         else if Message.Message = EvKEYDOWN
+                then TypeOfEvent:=EvKeyboard
+                else TypeOfEvent:=EvCommand;
+       end;
+       case TypeOfEvent of
+         EvSysMessage: DispatchSysMessage(Message);
+         EvMouse: begin
+               { Controlla se si opera in modalit… modale }
+               ModalMode:= (Primo^.SysConfig and cfModal)<>0;
+               WorkAreaDetected:=false;
+               GetIntVec($09,Int09);
+               if Int09<>Int09Save then SetIntVec($09,Int09Save);
+               ValidEvent:= (ModalMode and Primo^.R.XYIn(Message.mcx,Message.mcy))
+                            or not ModalMode
+                            or PopUpMode;
+               if ValidEvent
+                 then begin
+                   precObjPointed:=ObjectPointed;
+                   { Determinazione del nuovo oggetto puntato }
+                   if (ObjectPointed=nil) or
+                      not ObjPointingLock
+                   then begin
+                     ObjectPointed:=GetObjectPointed;
+                     {SetMouseCursor(ObjectPointed^.CursorID);}
+                     { Gestione hot spots a livello di gestione dell'applicazione. }
+                     HotSpotMessage:=OPView(ObjectPointed)^.SetCursor(Message.mcx,Message.mcy);
+                     if HotSpotMessage = Null_ID
+                       then begin
+                         if GetVMP(typeof(ObjectPointed^),VMI_OTView_SetCursor) <>
+                            GetVMP(typeof(OTView),VMI_OTView_SetCursor)
+                         then HotSpotMessage:=ObjectPointed^.SetCursor(Message.mcx,Message.mcy)
+                         else HotSpotMessage:=ObjectPointed^.ID;
+                       end;
+                   end;
+
+                   { Spedisce un messaggio all'oggetto la cui area Š stata
+                     appena lasciata dal cursore. }
+                   if (precObjPointed<>nil) and (precObjPointed<>ObjectPointed) then begin
+                     Message.HNDL:=_GOLIB_SYSTEM_;
+                     Message.Message:=EvMOUSE_MOVES_OUT;
+                     ESP:=true;
+                     StopESP:=false;
+                     { Spedizione del messaggio del mouse }
+                     precObjPointed^.DispatchMessage(Message);
+                     ESP:=false;
+                   end;
+
+                   if MouseMessageValid(Message.Message,ObjectPointed^.MouseReactionMask)
+                   then begin
+                     { messaggio processabile }
+                     if ((ObjectPointed^.SysConfig and cfVisible)=cfVisible) and
+                        ((ObjectPointed^.SysConfig and cfNoEvent)<>cfNoEvent)
+                     then begin
+                       if PopUpMode and
+                          ((Message.Message and $00F0)<>0) and
+                          not Primo^.R.XYIn(Message.mcx,Message.mcy)
+                       then begin
+                         { Se PopUpMode attivo ed Š stato premuto un tasto al
+                           di fuori dell'area pop-up allora cancella l'oggetto
+                           PopUp. }
+                         if Primo=ObjectPointed then ObjectPointed:=nil;
+                         if seg(Primo^)=DSeg then Primo^.Done
+                                             else dispose(Primo,Done);
+                         PopUpMode:=false;
+                         if ObjectPointed=nil then goto SaltaDispatching;
+                       end;
+                       ESP:=true;
+                       StopESP:=false;
+                       { Spedizione del messaggio del mouse }
+                       with ObjectPointed^ do begin
+                         precID:=ID;
+                         ID:=HotSpotMessage;
+                         DispatchMessage(Message);
+                         ID:=precID;
+                       end;
+                       ESP:=false;
+SaltaDispatching:
+                     end;
+                   end
+                   else begin
+                     if PopUpMode and ((Message.Message and $00F0)<>0) then begin
+                       if not Primo^.R.XYIn(Message.mcx,Message.mcy) then begin
+                         if seg(Primo^)=DSeg then Primo^.Done
+                                             else dispose(Primo,Done);
+                         PopUpMode:=false;
+                       end;
+                     end;
+                   end; { endif }
+                 end
+                 else begin
+                   { messaggio non processabile (vedi ModalMode) }
+                   sound(750);
+                   delay(30);
+                   nosound;
+                 end;
+               SetIntVec($09,Int09);
+            end;
+         EvKeyboard: begin
+            {$IFDEF debugging}
+               if Message.Character=#27 then QuitApplication:=true;
+            {$ENDIF}
+               view:=FindKeyEvs(Message.KeyStroke,HotKeyMessage);
+               if view<>nil then begin
+                 Message.Message:=HotKeyMessage;
+                 Message.HNDL:=_GOLIB_SYSTEM_;
+                 view^.DispatchMessage(Message);
+               end
+               else if ObjectSelected<>nil then ObjectSelected^.DispatchMessage(Message);
+            end;
+         EvCommand: begin
+               if Message.HNDL = _OBJ_POINTED_
+                 then ObjectPointed^.SendMessage(Message)
+                 else if Application<>nil then Application^.ExecMessage(Message);
+            end;
+       end;
+       DeleteMessage;
+       {  Cancellazione oggetti e deinizializzazione della lista locale degli
+          oggetti da cancellare }
+       obj:=LocalDeleteList;
+       while obj<>nil do begin
+         if ObjectPointed=obj^.obj then ObjectPointed:=nil;
+
+         if seg(obj^.obj^)<>DSeg then dispose(obj^.obj,Done)
+                                 else obj^.obj^.Done;
+         obj:=obj^.next;
+       end;
+       ObjToDeleteList:=PreviousList;
+
+       if Primo=nil then QuitApplication:=true;
+     {$IFDEF debugging }
+       if primo=nil then begin
+         RestoreCRTMode;
+         writeln('La display-list Š vuota.');
+         writeln;
+         writeln('Programma terminato !');
+         {GetKeyStroke;}
+       end;
+     {$ENDIF}
+     end;  { DispatchMessage }
+
+
+   procedure StartApplication;
+     var Message:TMessage;
+     begin
+       DefineGraphicCursor(syscur_cursore,0,0);
+       LookVideo:=true;
+       RefreshDisplay;
+       asm
+         { Attiva il refresh della memoria video }
+         MOV AH,12H
+         MOV BL,36H
+         MOV AL,0
+         INT 10H
+       end;
+       while not QuitApplication do begin
+       {$IFNDEF Installa1Ch}
+         asm
+            int   0F3h
+         end;
+       {$ENDIF}
+         if not MsgBuffer.Empty then begin
+           MsgBuffer.VisElement(Message);
+           DispatchMessage(Message);
+         end;
+       end;
+     end;
+
+
+   procedure LockObjPointed;
+     begin
+       if obj<>nil then ObjectPointed:=obj;
+       ObjPointingLock:=true;
+     end;
+
+
+   procedure UnlockObjPointed;
+     begin
+       ObjPointingLock:=false;
+     end;
+
+
+   procedure DispatchSysMessage(var Message:TMessage);
+
+     procedure SendMessage;
+       var obj:OPView;
+       begin
+         obj:=pointer(Message.long2Reg);
+         Message.Message:=Message.w2Reg;
+         obj^.DispatchMessage(Message);
+       end;
+
+     begin
+       case Message.Message of
+         SYS_CREATE_OBJECT: begin
+              OPView(Message.ParametersPtr1)^.PutOnDeskTop;
+            end;
+         SYS_DELETE_OBJECT: begin
+              if seg(OPView(Message.ParametersPtr1)^)<>DSeg
+                then dispose(OPView(Message.ParametersPtr1),Done)
+                else OPView(Message.ParametersPtr1)^.Done;
+            end;
+         SYS_SEND_MESSAGE: begin
+              SendMessage;
+            end;
+         SYS_REFRESH_OBJ: begin
+              if OPView(Message.long2Reg)<>nil then OPView(Message.long2Reg)^.Refresh;
+            end;
+       end;
+     end;
+
+
+ {*************************************************************************}
+
+
+                       {----- OTApplication -----}
+   constructor OTApplication.InitApplication;
+     begin
+     end;
+
+
+   procedure   OTApplication.RunApplication;
+     begin
+     end;
+
+
+   destructor  OTApplication.ShutDown;
+     begin
+     end;
+
+
+   procedure   OTApplication.ExecMessage(var Message:TMessage);
+     begin
+     end;
+
+
+   procedure   OTApplication.LoadResources;
+     begin
+     end;
+
+
+   procedure   OTApplication.LoadAccelerators;
+     begin
+     end;
+
+
+
+
+
+
+
+
+
+ {***************** Uscita dall'applicazione ******************************}
+
+{DEFINE SalvaIntF3}
+
+
+{$IFDEF SalvaIntF3}
+var f:file of pointer;
+    punt:pointer absolute Int1C;
+
+    procedure GetIntF3;
+      begin
+        assign(f,'c:\tp7\intF3adr.tmp');
+        {$I-}
+        reset(f);
+        {$I+}
+        if ioresult=0
+          then read(f,punt)
+          else begin
+            GetIntVec($F3,@IntF3);
+            rewrite(f);
+            write(f,punt);
+          end;
+        close(f);
+      end;
+
+{$ENDIF}
+
+var
+   ExitProcedure: pointer;
+
+   procedure ExitApplic; far;
+     var c:pointer;
+     begin
+       { Ripristino degli interrupts }
+     {$IFDEF Installa1Ch}
+       SetIntVec($1C,@Int1C);
+     {$ELSE}
+       SetIntVec($F3,@IntF3);
+     {$ENDIF}
+
+       DestroyBuffers;
+       { Distruzione dei cursori ancora in lista }
+       while Cursors<>nil do begin
+         c:=Cursors;
+         Cursors:=Cursors^.next;
+         dispose(PCursor(c));
+       end;
+       if ExitProcedure<>nil then TProc(ExitProcedure);
+     {$IFDEF SalvaIntF3}
+       {$I-}
+       erase(f);
+       {$I+}
+       if ioresult<>0 then begin
+         RestoreCRTMode;
+         writeln('File temporaneo INTF3ADR.TMP non cancellato.');
+         readkey;
+         RestoreGraphMode;
+       end;
+     {$ENDIF}
+     end;
+{$F-}
+
+
+begin
+  ObjectPointed:=nil;
+  QuitApplication:=false;
+  { Installazione della procedura di uscita }
+  ExitProcedure:=GraphExitProc;
+  GraphExitProc:=@ExitApplic;
+{$IFDEF Installa1Ch}
+  GetIntVec($1C,@Int1C);
+{$ELSE}
+  {$IFDEF SalvaIntF3}
+    GetIntF3;
+  {$ELSE}
+    GetIntVec($F3,@IntF3);
+  {$ENDIF}
+{$ENDIF}
+  OTBuffer_Alloc:=@MEMMAN.OTBuffer.Alloc;
+  GetKeyInterrupts(_Get_Int_,_Check_Int_,_Shifts_Int_);
+
+  APPLICATION:=nil;
+end.

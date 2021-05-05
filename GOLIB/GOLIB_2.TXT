@@ -1,0 +1,110 @@
+--------------------------------------------------------------------------------
+
+Oggetto: OTView
+--------------------------------------------------------------------------------
+
+Struttura:
+
+     OTView = object
+        ID:word;
+        _Father_,
+        _Gruppo_,
+        _Down_  ,
+        _Up_    : OPView;
+        SysConfig: word;
+        PrefRefresh:TSortMethod;
+        R,
+        precR: OTRect;
+        _CancBar_:Byte;
+        LastDx,LastDy:integer;
+        constructor Init(_ID:word; var coord:OTRect);
+        destructor Done; virtual;
+
+        { Inserisce l'oggetto nella lista principale (ROOT) e lo rende vidibile }
+        procedure PutOnDeskTop;
+        procedure Disegna; virtual;
+        procedure DisegnaXY(x,y:integer);
+      {
+        Procedure di gestione della dimensione, del posizionamento e
+        della visibilit… dell'oggetto:
+      }
+        function Resize(var _r:OTRect):boolean; virtual;
+        procedure Adjust; virtual;
+        procedure SetLimitSize(DimX,DimY:word);
+        procedure GetLimitSize(var DimX,DimY:word);
+        procedure Move(x,y:integer);
+        procedure MoveRel(dx,dy:integer); virtual;
+        procedure Hide;
+        procedure Show;
+        procedure Select; virtual;
+        procedure Deselect; virtual;
+        procedure Enable; virtual;
+        procedure Disable; virtual;
+      {
+        Procedure di gestione della lista di oggetti:
+      }
+        procedure PutOnFirst;
+        function UniqueInList:boolean;
+        { Imposta obj come successivo di Self. }
+        procedure LinkTo(var obj:OTView);
+      {
+        Procedure di gestione degli eventi:
+      }
+        function ReactionEvent(Event:word):word; virtual;
+        procedure Reaction; virtual;
+        procedure SendMessage(message:word);
+        {
+        procedure EvMouseRightButton; virtual;
+        procedure EvMouseCenterButton; virtual;
+        procedure EvMouseLeftButton; virtual;
+        procedure EvMouseDoubleClick; virtual;
+        }
+        procedure EvMoveObject;
+        procedure EvDimObject;
+     private
+        MinDimX, MinDimY:word;
+     end;
+--------------------------------------------------------------------------------
+
+Campi pubblici.
+
+ID
+        Codice di identificazione dell'oggetto all'interno di una applicazione.
+        Per rispondere ad un evento si fa riferimento a ID, quindi a ID pu•
+        essere assegnato il codice dell'evento (Messaggio) da associare all'oggetto.
+
+_Father_
+        Puntatore all'oggetto gerarchicamente superiore.
+
+_Gruppo_
+        Puntatore al primo elemento della sublist nel caso in cui l'oggtto sia
+        composto.
+
+_Down_
+        Puntatore all'oggetto successivo della display-list. Gli oggetti della
+        display-list vengono visualizzati uno sopra l'altro da sopra a sotto
+        seguendo l'ordine della lista.
+
+_Up_
+        Puntatore all'oggetto precedente della display-list.
+
+SysConfig
+        Campo word che serve per la configurazione dell'oggetto. Ad ogni bit
+        Š associata una caratteristica dell'oggetto. (vedi FLAGS.TXT)
+
+PrefRefresh
+        Se l'oggetto Š composto indica il metodo preferito dall'oggetto per il refresh.
+
+R
+        Oggetto rettangolo che delinea l'area di lavoro dell'oggetto.
+
+precR
+        In precR viene conservato il valore di R quando viene lanciata il
+        metodo DisegnaXY. Questo campo Š utile per le procedure che vogliono
+        in assoluto fare riferimento alle coordinate originali dell'oggetto.
+        Diversamente non sarebbe possibile perchŠ la procedura DisegnaXY modifica
+        R per effettuare il refresh e di conseguenza non Š possibile fare
+        riferimento a R per conoscere le coordinate originali.
+
+--------------------------------------------------------------------------------
+

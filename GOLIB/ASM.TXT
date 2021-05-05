@@ -1,0 +1,305 @@
+
+             GUIDA DI RIFERIMENTO ALLE ISTRUZIONI ASSEMBLER.
+             _______________________________________________
+
+
+
+Elenco di alcune istruzioni assembler supportate dal processore 8086.
+
+
+	Istruzione	Processore	Istruzione	Processore
+----------------------------------------------------------------------------
+	SAL *		Tutti           SAR *		Tutti
+	ADC *		Tutti           SBB *		Tutti
+	AAA		Tutti		AAS		Tutti
+	CBW *		Tutti           HLT		Tutti
+	ESC		Tutti		CMC		Tutti
+	AAD		Tutti(1)	AAM		Tutti(1)
+	DIV *		Tutti		MUL *		Tutti
+	IDIV *		Tutti		IMUL *		Tutti(1)
+	NEG *		Tutti		SAHF		Tutti
+	CWD *		Tutti           INTO		Tutti
+	DAS		Tutti           DAA		Tutti
+	LAHF		Tutti		REPE *		Tutti
+	REPZ *		Tutti		WAIT		Tutti
+	XLABT		Tutti		XLAT		Tutti
+	LOCK		Tutti		UNLOCK		Tutti
+        REP *           Tutti           REPNE *		Tutti
+	REPNZ *		Tutti           LOOPNE *	Tutti
+	LOOPE *		Tutti           LOOPW		Tutti
+	LOOPZ *		Tutti           LOOPWZ		Tutti
+	LOOPNZ *	Tutti           LOOPWNZ		Tutti
+	LOOPWE		Tutti           LOOPWNE		Tutti
+
+
+
+
+
+
+Elenco di alcune istruzioni assembler supportate dal processore 80186.
+
+
+	Istruzione	Processore	Istruzione	Processore
+----------------------------------------------------------------------------
+	LEAVE		186-386		ENTER		186-386
+	PUSHA		186-386		POPA		186-386
+	BOUND		186-386		INSB		186-386
+	INSW		186-386		INSD		186-386
+	OUTSB		186-386         OUTSW		186-386
+	OUTSD		186-386
+
+
+
+
+
+Elenco di alcune istruzioni assembler supportate dal processore 80286.
+
+
+	Istruzione	Processore	Istruzione	Processore
+----------------------------------------------------------------------------
+	ARPL		286+386		LSL		286+386
+	CLTS		286+386		LLDT		286+386
+	LMSW		286+386		LTR		286+386
+	STR		286+386		VERR		286+386
+	VERW		286+386		LGDT		286+386
+	LIDT		286+386		SGDT		286+386
+	SIDT		286+386		LAR		286+386
+	SLDT		286+386		SMSW		286+386
+
+	AAD		Tutti(1)	AAM		Tutti(1)
+	IMUL		Tutti(1)
+
+(1) Istruzione ridefinita per il 286.
+
+
+
+
+
+Elenco di alcune istruzioni assembler supportate dal processore 80386.
+
+
+	Istruzione	Processore	Istruzione	Processore
+----------------------------------------------------------------------------
+	CWDE		386		CDQ		386
+	IRETD		386             SETA		386
+	POPFD		386		PUSHFD		386
+	PUSHAD		386		POPAD		386
+	LOOPD		386		LOOPDE		386
+	LOOPDZ		386		LOOPDNE		386
+	LOOPDNZ		386		BT		386
+	BTC		386		BTR             386
+	BTS		386		BSF		386
+	BSR		386		MOVSX		386
+	MOVZX		386		SHLD		386
+	SHRD		386		SETAE		386
+	SETB		386		SETBE		386
+	SETC		386		SETE		386
+	SETG		386		SETGE		386
+	SETL		386		SETLE		386
+	SETNA		386		SETNAE		386
+	SETNB		386		SETNBE		386
+	SETNC		386		SETNE		386
+	SETNG		386		SETNGE		386
+	SETNL		386		SETNLE		386
+	SETNO		386		SETNP		386
+	SETNS		386		SETNZ		386
+	SETO		386		SETP		386
+	SETZ		386		SETPE		386
+	SETS		386
+
+
+
+
+Altre istruzioni trovate per caso durante il debugging.
+
+
+	Istruzione	Processore	Istruzione	Processore
+----------------------------------------------------------------------------
+	BSWAP		>=386 (?)
+
+
+
+
+
+
+Metodi di indirizzamento per processori fino al 286.
+----------------------------------------------------
+
+ Il formato generale di un operando di memoria ä il seguente:
+
+ [registro base+indice+registro+spiazzamento]
+    oppure
+ [registro base+indice] [registro+spiazzamento]
+
+ dove spiazzamento ä un valore costante a 16 bit.
+
+ Un operando di memoria puï essere rappresentato anche cosç:
+
+                 BX        SI
+                 oppure  + oppure + spiazzamneto
+                 BP        DI
+
+                 (base)    (indice)
+
+
+
+Metodi di indirizzamento per processori fino al 386.
+----------------------------------------------------
+
+  Oltre a valere i metodi di indirizzamento per i processori fino al 286
+  ve ne sono di nuovi.
+
+                EAX        EAX
+                EBX        EBX
+                ECX        ECX
+                EDX        EDX
+                ESI     +  ESI [*2 o *4 o *8] + spiazzamento 32 bit
+                EDI        EDI
+                EBP        EBP
+                ESP
+
+               (base)     (indice)
+
+
+
+
+Salti condizionati.
+-----------------------------------------------------------------------------
+Nome		Significato				Elementi di controllo
+-----------------------------------------------------------------------------
+JB/JNAE		Salta se minore/Salta se non maggiore	CF=1
+		o uguale a
+JAE/JNB		Salta se maggiore o uguale a/Salta se	CF=0
+		non minore
+JBE/JNA		Salta se minore o uguale a/Salta se	CF=1 o ZF=1
+		non maggiore
+JA/JNBE		Salta se maggiore/Salta se non minore	CF=0 o ZF=0
+		o uguale a
+JE/JZ		Salta se uguale a			ZF=1
+JNE/JNZ		Salta se non uguale a			ZF=0
+JL/JNGE		Salta se minore di/Salta se non		SF<>OF
+		maggiore o uguale a
+JGE/JNL		Salta se maggiore o uguale a/Salta se 	SF<>OF
+		non ä minore
+JLE/JNG		Salta se minore uguale a/Salta se non	ZF=1 o SF<>OF
+		maggiore di
+JG/JNLE		Salta se maggiore di/Salta se non	ZF=0 o SF=OF
+		minoreo uguale a
+JP/JPE		Salta se c'ä paritÖ/Salta se paritÖ	PF=1
+		pari
+JNP/JPO		Salta se nessuna paritÖ/Salta se paritÖ	PF=0
+		dispari
+JS		Salta se c'ä il segno			SF=1
+JNS		Salta se non c'ä il segno		SF=0
+JC		Salta se c'ä il riporto			CF=1
+JNC             Salta se non c'ä il riporto		CF=0
+JO		Salta se c'ä l'overflow			OF=1
+JNO             Salta se non c'ä l'overflow		OF=0
+
+
+
+
+
+
+Descrizione istruzioni.
+-----------------------
+
+  ADC       Serve per sommare operandi a 32 bit. Tale operazione avviene
+            sommando prima la word inferiore con ADD e poi le words superiori
+            con ADC. Esempio DX:AX+BX:CX:
+              ...
+              add   ax,cx
+              adc   dx,bx
+              ...
+            Fra le istruzioni ADD e ADC non devono esserci istruzioni che
+            modifichino il flag di riporto perchä questo viene utilizzato
+            da ADC per sommare le words pió alte. Ovviamento se gli
+            operandi sono formati da pió di due words bisogna mettere pió
+            istruzioni ADC.
+  BOUND     Verifica che il primo operando abbia valore compreso tra il valore
+            di due words con segno contenute in sequenza all'indirizzo di
+            memoria specificato dal secondo operando che deve quindi
+            essere un operando di memoria. Se il primo operando
+            ha un valore che ä al di fuori dell'intervallo viene generato
+            un interrupt 05h. Prima di utilizzare questa istruzione ä
+            necessario aver installato un gestore per tale interrupt e
+            inoltre bisogna considerare che al termine dalla procedura chiamata
+            dall'interrupt 05h viene rieseguita l'istruzione BOUND che non
+            aveva avuto esito positivo.
+  BSWAP	    Accetta come operando un registro a 32 bit ed effetua uno scambio
+            dei bytes che compongono il registro nel modo seguente:
+		stato del registro prima:   b1 b2 b3 b4;
+		stato del registro dopo:    b4 b3 b2 b1;  
+  BT        Copia il bit del primo operando specificato dal secondo operando
+            nel flag di riporto. Il primo operando puï essere a 16 o 32 bit o
+            una locazione di memoria contenente il bit da copiare. Il secondo
+            operando puï essere un valore immediato a 8 bit o un registro di
+            uso generale a 16 o 32 bit. Se viene utilizzato come secondo
+            operando un registro, il suo formato deve corrispondere al formato
+            del primo. Il numero di bit viene conteggiato a partire da 0.
+  BTC       Come BT, ma nel flag di riporto viene copiato il complemento del
+            bit indicato.
+  BTR       Come BT con la differenza che,  una volta copiato, il bit viene
+            azzerato.
+  BTS       Come BT con la differenza che,  una volta copiato, il bit viene
+            settato.
+  CBW       Converte un byte con segno in una word con segno
+            (AL -> AX).
+  CLTS      Per la modalitÖ protetta del 286.
+  CWD       Converte una word con segno in una double word con segno
+            (AX -> DX:AX).
+  DIV       Divide operandi senza segno a 32 o 16 bit con operandi a 16 o 8 bit.
+            Il divisore ä contenuto in DX:AX o in AX. Il quoziente viene messo
+            in AX o in AL e il resto in DX o in AH.
+  ENTER     Istruzione di entrata in una procedura con parametri. Richiede
+            due parametri di cui il primo ä un valore che indica la dimensione
+            dei paramtri e il secondo ä un valore che indica il livello di
+            annidamento.
+  IDIV      Come DIV, ma con la gestione del segno.
+  IMUL      Come MUL, ma con la gestione del segno.
+            80186.
+              Estensione che consente la moltiplicazione per un valore immediato:
+              IMUL DX,4    moltiplica DX per 4 mette il risultato in DX;
+              IMUL CX,DX,4 moltiplica DX per 4 mette il risultato in CX;
+              Questi due nuovi formati vanno bene solo se il prodotto ä tra
+              operandi a 16 bit e il risultato ä a sua volta a 16 bit.
+  INS       Legge un byte o una word o un double word dalla porta puntata da
+            DX nell'indirizzo di memoria ES:DI e incrementa DI di 1 o 2 o 4.
+  LEAVE     Istruzione di uscita da una procedura con parametri. Ripristina
+            lo stack scaricando la struttura allocata da ENTER.
+  LGDT      Per la modalitÖ protetta del 286.
+  LIDT      Per la modalitÖ protetta del 286.
+  LLDT      Per la modalitÖ protetta del 286.
+  LMSW      Per la modalitÖ protetta del 286.
+  LOOPE     Effettua il loop fino a quando CX=0 o ZF=1.
+  LOOPNE    Effettua il loop fino a quando CX=0 o ZF=0.
+  LOOPNZ    Come LOOPNE.
+  LOOPZ     Come LOOPE.
+  LTR       Per la modalitÖ protetta del 286.
+  MUL       Moltiplica valori a 8 o 16 bit senza segno (contenuti in AL o in
+            AX) con valori a 16 o 32 bit. Il risultato ä contenuto in AX o in
+            DX:AX.
+  NEG       Cambia il segno dell'operando.
+  OUTS      Scrive un byte o una word o un double word nella porta puntata da
+            DX dall'indirizzo di memoria DS:SI e incrementa SI di 1 o 2 o 4.
+  POPA      Carica dallo stack gli 8 registi di uso generale nell'ordine
+            DI,SI,BP,BX,DX,CX,AX. SP non viene richiamato, ma incrementato
+            di 16.
+  PUSHA     Memorizza nello stack gli 8 registi di uso generale nell'ordine
+            AX,CX,DX,BX,SP,BP,SI,DI.
+  REP       Prefisso di istruzione che ripete l'istruzione fino a quando
+            CX=0.
+  REPE      Prefisso di istruzione che ripete l'istruzione fino a quando
+            CX=0 o ZF=1.
+  REPNE     Prefisso di istruzione che ripete l'istruzione fino a quando
+            CX=0 o ZF=0.
+  REPNZ     Come REPNE.
+  REPZ      Come REPE.
+  SAL       Shift a sinistra con preservamento del segno. Serve per effettuare
+            divisioni con segno in cui il divisore ä multiplo di 2.
+  SAR       Shift a destra con preservamento del segno. Serve per effettuare
+            moltiplicazioni con segno in cui il moltiplicatore ä multiplo di 2.
+  SBB       Come ADC, ma per la sottrazione.
+
+
+

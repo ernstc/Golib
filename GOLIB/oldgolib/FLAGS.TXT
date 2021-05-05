@@ -1,0 +1,496 @@
+*****************************************************************************
+            GOLIB 1.0  (c) 1995  Ernesto CIANCIOTTA Productions
+*****************************************************************************
+
+DESCRIZIONE DEL FLAG "SysConfig" DEFINITO NELL'OGGETTO "OTView".
+
+1. Mappa dei bits del campo di configurazione degli oggetti OTView
+2. Costanti definite per la manipolazione dei flags
+
+
+
+1.อออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+
+Mappa dei bits del campo di configurazione degli oggetti OTView:
+
+
+            ฺฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤยฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฟ
+            ณ   Flags per il    ณ Flags per l'oggetto                       ณ
+            ณ      Refresh      ณ                                           ณ
+            ษอออัอออัอออัอออัอออัอออัอออัอออหอออัอออัอออัอออัอออัอออัอออัอออป
+            บ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   บ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   บ
+            ศอัอฯอัอฯอัอฯอัอฯอัอฯอัอฯอัอฯอัอสอัอฯอัอฯอัอฯอัอฯอัอฯอัอฯอัอฯอัอผ
+              ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ
+cfCancBar ฤฤฤฤด   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ
+              ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ
+cfPostDraw ฤฤฤฤฤฤฤด   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ
+              ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ
+              ภฤยฤู   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ
+cfCDraw ฤฤฤฤฤฤฤฤู     ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ
+                      ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ
+cfLPriority ฤฤฤฤฤฤฤฤฤฤู   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ
+                          ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ
+cfDrawFatherRect ฤฤฤฤฤฤฤฤฤู   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ
+                              ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ
+cfCompactable ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤู   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ
+                                  ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ
+                                  ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ
+                                  ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ
+cfSelected ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤู   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ
+                                      ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ
+cfSelectable ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤู   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ
+                                          ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ
+cfAlwaysAsFirst ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤู   ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ
+                                              ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ
+cfModal ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤู   ณ   ณ   ณ   ณ   ณ   ณ   ณ
+                                                  ณ   ณ   ณ   ณ   ณ   ณ   ณ
+cfTrasparent (cfNoEvent) ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤู   ณ   ณ   ณ   ณ   ณ   ณ
+                                                      ณ   ณ   ณ   ณ   ณ   ณ
+cfBitBtl ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤู   ณ   ณ   ณ   ณ   ณ
+                                                          ณ   ณ   ณ   ณ   ณ
+cfEnable ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤู   ณ   ณ   ณ   ณ
+                                                              ณ   ณ   ณ   ณ
+cfCustomControl ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤู   ณ   ณ   ณ
+                                                                  ณ   ณ   ณ
+cfScanGroup ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤู   ณ   ณ
+                                                                      ณ   ณ
+cfOnDeskTop ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤู   ณ
+                                                                          ณ
+cfVisible ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤู
+
+
+
+
+2.อออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+
+Costanti definite per la manipolazione dei flags:
+
+                                        Descrizione
+ออออออออออออออออัออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+cfPassive       ณ Serve per resettare tutti i falgs.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+cfAllActive     ณ Serve per settare tutti i flags.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+cfVisible       ณ Se 1 allora l'oggetto  visibile.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+cfOnDeskTop     ณ Se 1 allora l'oggetto  posizionato nella lista ROOT, altrimenti
+                ณ  un oggetto vagante che non  stato collocato da nessuna parte
+                ณ oppure  situato in qualche sotto-lista di qualche oggetto
+                ณ composto.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+cfScanGroup     ณ Se  1 e _gruppo_  <>nil allora le operazioni di refresh
+                ณ operano una scansione per disegnare gli oggetti che sono
+                ณ puntati da _gruppo_. Per default  settata a 1.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+cfCustomControl ณ Se  impostato a 1 allora il gestore degli eventi generati
+                ณ da dispositivi di puntamento (Es. Mouse) richiama il gestore
+                ณ dell'oggetto senza ulteriore scansione, anche se questo  un
+                ณ oggetto composto, ossia ha _gruppo_<>nil.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+cfEnable        ณ Se impostato a 1 allora l'oggetto  attivo, altrimenti 
+                ณ disattivato e il gestore degli eventi lo ignora.
+                ณ Ilcontrario di questa costante  __cfDisable.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+cfSelectable    ณ Se settato a 1 allora l'oggetto pu• essere selezionato
+                ณ automaticamente dal sotto-sistema GOLIB.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+cfSelected      ณ Se settato a 1 allora l'oggetto  selezionato altrimenti
+                ณ  deselezionato.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+cfAlwaysAsFirst ณ Se settato a 1 allora l'oggetto sar… sempre in primo piano e
+                ณ potr… essere coperto solo da un altro oggetto che avr… questa
+                ณ configurazione.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+cfModal         ณ Se l'oggetto  modale (se tale flag  settato a 1), allora,
+                ณ il gestore degli eventi legger… solo gli eventi che riguardano
+                ณ l'area di lavoro dell'oggetto.
+                ณ N.B.: Questo flag ha effetto solo sugli oggetti della lista
+                ณ       primaria della Display List e non anche sugli oggetti
+                ณ       apparteneti alle varie sub liste di oggetti "figli".
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+cfTrasparent    ณ Se  settato a 1 allora il gestore degli eventi ricerca
+(cfNoEvent)     ณ l'oggetto che deve reagire anche sotto l'area di tale oggetto.
+                ณ Questo flag  usato, ad esempio, nell'oggetto OTRectangle.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+cfBitBtl        ณ Serve per stabilire cosa fare quando un oggetto viene mosso
+                ณ sul Desktop. Se impostato a 1 allora si utilizzer… il
+                ณ procedimento BITBTL (Bit Block Transfer Line), altrimenti
+                ณ verr… lanciata la procedura "Disegna" dell'oggetto per il suo
+                ณ refresh.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+cfCancBar       ณ Se  1 allora nel refresh l'oggetto attiva il processo di
+                ณ frammentazione. Nella Visible-List viene aggiunto un oggetto
+                ณ OTBar di stile 1 e colore _CancBar_ dell'oggetto.
+                ณ Inoltre viene inserito anche l'oggetto originale:
+                ณ - dopo l'oggetto OTBar se cfPostDraw=0;
+                ณ - con modalit… PostDraw se cfPostDraw=1.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+cfPostDraw      ณ Se  1 allora nel refresh l'oggetto non attiva il processo
+                ณ di frammentazione e viene aggiunto in coda nella visible-list.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+cfCDraw         ณ Imposta contemporaneamente cfCancBar e cfPostDraw.
+                ณ In questo caso il processo di frammentazione viene attivato.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+cfLPriority     ณ Se settato a 1 allora l'oggetto verra sempre inserito fra gli
+                ณ ultimi oggetti della Visible-List nella modalit… PostDraw.
+                ณ Questo flag  particolarmente adatto per quegli oggetti che
+                ณ richiedono un tempo lungo per disegnarsi e ad esempio 
+                ณ utilizzato dall'oggetto OTText.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤมยฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+cfDrawFatherRect ณ Quando si effettua il refresh di un oggetto composito (con
+                 ณ _gruppo_<>nil), se gli oggetti figli non coprono completamente
+                 ณ l'area del padre allora vengono creati dei rettangoli che
+                 ณ coprono l'area scoperta del padre. Ossia la procedura di
+                 ณ Scan Conversion carica nella lista degli oggetti che devono
+                 ณ essere disegnati anche una serie di oggetti OTBar che servono
+                 ณ per disegnare la regione dell'oggetto composito che non 
+                 ณ stata disegnata dagli oggetti che lo compongono.
+                 ณ Se questo flag e settato a 1 allora tale operazione verr…
+                 ณ ignorata.
+                 ณ E' un flag che riguarda solo gli oggetti compositi ed  molto
+                 ณ utile nei casi in cui tutti gli oggetti figli siano configurati
+                 ณ con il flag cfPostDraw. In questo caso tali oggetti non
+                 ณ attiverebbero il processo di frammentazione del rettangolo
+                 ณ padre e l'intero rettangolo padre sarebbe coperto con una
+                 ณ barra nera o di altro colore.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤยมฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+cfCompactable   ณ Ha senso solo per gli oggetti composti.
+                ณ Nelle operazioni nelle quali si determinano le zone visibili o
+                ณ coperte di un determinato oggetto vengono compattati tutti gli
+                ณ oggetti della display-list configurati con questo flag a 1.
+                ณ Compattare un oggetto significa sostituire all'oggetto, nella
+                ณ display-list, la rispettiva sub-list.
+                ณ Ovviamente al termine delle operazioni sopra citate lo stato
+                ณ della display-list viene ripristinato a quello originale, e
+                ณ cio a quello prima della compattazione.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+cfITLF          ณ (ITLF -> Internal Transform Layout Flag)
+                ณ N.B.: Flag utilizzato da OTWindow.
+                ณ
+                ณ Se attivato la modificazione del suo layout viene effettuata
+                ณ iternamente dall'oggetto, altrimenti da un oggetto
+                ณ gerarchicamente superiore come ad esempio OTWindow. Questo
+                ณ oggetto infatti quando viene ridimensionato con la procedura
+                ณ "Resize", provvede a modificare le dimensioni di tutti gli
+                ณ oggetti che sono ad esso collegati come figli, con la procedura
+                ณ "Resize" di questi.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+__cfVisible     ณ  Negativi dei flags corrispondenti.
+__cfOnDeskTop   ณ
+__cfSelectable  ณ
+__cfScanGroup   ภฤฟ
+__cfCustomControl ณ
+__cfAlwaysAsFirst ณ
+__cfModal       ฺฤู
+__cfTrasparent  ณ
+__cfBitBtl      ณ
+__cfCancBar     ณ
+__cfPostDraw    ณ
+__cfLPriority   ภฤฤฟ
+__cfDrawFatherRect ณ
+__cfITLF        ฺฤฤู
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+__cfDisable     ณ Negativo di cfEnable.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+__cfNDraw       ณ ( negativo di cfCDraw )
+                ณ Resetta i flags cfCancBar e cfPostDraw.
+                ณ In questo caso viene utilizzata esclusivamente la tecnica di
+                ณ frammentazione per la determinazione della visible-list.
+                ณ
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤมฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+
+
+
+
+
+
+
+อออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+*****************************************************************************
+อออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+
+
+DESCRIZIONE DEL CAMPO "MouseReactionMask" DELL'OGGETTO "OTView".
+
+1. Mappa dei bits
+2. Costanti definite per la manipolazione dei flags
+
+
+
+1.อออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+
+Mappa dei bits:
+
+
+            ฺฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฟ
+            ณ       MouseReactionMask       ณ
+            ษอออัอออัอออัอออัอออัอออัอออัอออป
+            บ   ณ   ณ   ณ   ณ   ณ   ณ   ณ   บ
+            ศอัอฯอัอฯอัอฯอัอฯอัอฯอัอฯอัอฯอัอผ
+              ณ   ณ   ณ   ณ   ณ   ณ   ณ   ณ
+rcMove ฤฤฤฤฤฤฤู   ณ   ณ   ณ   ณ   ณ   ณ   ณ
+                  ณ   ณ   ณ   ณ   ณ   ณ   ณ
+rcMultiClick ฤฤฤฤฤู   ณ   ณ   ณ   ณ   ณ   ณ
+                      ณ   ณ   ณ   ณ   ณ   ณ
+rcLReseased ฤฤฤฤฤฤฤฤฤฤู   ณ   ณ   ณ   ณ   ณ
+                          ณ   ณ   ณ   ณ   ณ
+rcRReleased ฤฤฤฤฤฤฤฤฤฤฤฤฤฤู   ณ   ณ   ณ   ณ
+                              ณ   ณ   ณ   ณ
+itCReleased ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤู   ณ   ณ   ณ
+                                  ณ   ณ   ณ
+itLPressed ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤู   ณ   ณ
+                                      ณ   ณ
+itRPressed ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤู   ณ
+                                          ณ
+itCPressed ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤู
+
+
+
+2.อออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+
+Costanti definite per la manipolazione dei flags:
+
+                                        Descrizione
+ออออออออออออออัออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+rcMove        ณ Attiva la reazione al movimento del mouse.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+rcMultiClick  ณ Attiva il Multi Clicking per l'oggetto, ossia l'oggetto verr…
+              ณ chiamato quando si verificher… un evento di multi-clicking di
+              ณ rilascio o di pressione.
+              ณ Affinch l'impostazione di questo flag abbia senso  importante
+              ณ che sia settato almeno uno dei flags 0..5 .
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+rcLReseased   ณ Attiva la reazione al rilascio del tasto sinistro.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+rcRReseased   ณ Attiva la reazione al rilascio del tasto destro.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+rcCReseased   ณ Attiva la reazione al rilascio del tasto centrale.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+itLPressed    ณ Attiva la reazione alla pressione del tasto sinistro.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+itRPressed    ณ Attiva la reazione alla pressione del tasto destro.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+itCPressed    ณ Attiva la reazione alla pressione del tasto centrale.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤมฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+
+
+
+
+
+
+
+อออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+*****************************************************************************
+อออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+
+
+DESCRIZIONE DEL FLAG DEGLI ATTRIBUTI DELLE VOCI DEI MENU POP-UP,
+"Attributes", DEFINITO NEL RECORD "TMenuPP" NEL MODULO "MENU".
+
+1. Mappa dei bits
+2. Costanti definite per la manipolazione dei flags
+
+
+
+1.อออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+
+Mappa dei bits:
+
+
+            ฺฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฟ
+            ณ          Attributes           ณ
+            ษอออัอออัอออัอออัอออัอออัอออัอออป
+            บ   ณ \ ณ \ ณ   ณ   ณ   ณ   ณ   บ
+            ศอัอฯอออฯอออฯอัอฯอัอฯอัอฯอัอฯอัอผ
+              ณ           ณ   ณ   ณ   ณ   ณ
+itSeparator ฤฤู           ณ   ณ   ณ   ณ   ณ
+                          ณ   ณ   ณ   ณ   ณ
+itBitmap ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤู   ณ   ณ   ณ   ณ
+                              ณ   ณ   ณ   ณ
+itMarcable ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤู   ณ   ณ   ณ
+                                  ณ   ณ   ณ
+itMarked ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤู   ณ   ณ
+                                      ณ   ณ
+itSelected ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤู   ณ
+                                          ณ
+itActive ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤู
+
+
+
+2.อออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+
+Costanti definite per la manipolazione dei flags:
+
+                                        Descrizione
+ออออออออออออออัออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+itActive      ณ Indica se la voce  attiva.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+itSelected    ณ Indica se la voce  momentaneamente selezionata.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+itMarked      ณ Indica se la voce  marcata. (vedi itMarcable)
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+itMarcable    ณ Indica se la voce pu• essere marcata o no.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+itBitmap      ณ Se settato a 1 allora la voce  un'immagine bitmapped, altrimenti
+              ณ e una voce con del testo.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+itSeparator   ณ Indica se la voce  di tipo separatore. Se  cos allora tutti
+              ณ gli altri flags vengono ignorati.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤมฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+
+
+
+
+
+
+
+อออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+*****************************************************************************
+อออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+
+
+DESCRIZIONE DEL FLAG "ButtonConfig" dell'oggetto OTButton.
+
+1. Mappa dei bits
+2. Costanti definite per la manipolazione dei flags
+
+
+
+1.อออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+
+Mappa dei bits:
+
+
+                 ฺฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฟ
+                 ณ         ButtonConfig          ณ
+                 ษอออัอออัอออัอออัอออัอออัอออัอออป
+                 บ   ณ \ ณ \ ณ R ณ   ณ   ณ   ณ   บ
+                 ศอัอฯอออฯอออฯอัอฯอัอฯอัอฯอัอฯอัอผ
+                   ณ           ณ   ณ   ณ   ณ   ณ
+btInternalState ฤฤฤู           ณ   ณ   ณ   ณ   ณ
+                               ณ   ณ   ณ   ณ   ณ
+btFinalState ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤู   ณ   ณ   ณ   ณ
+                                   ณ   ณ   ณ   ณ
+btRepeatButtonReaction ฤฤฤฤฤฤฤฤฤฤฤฤู   ณ   ณ   ณ
+                                       ณ   ณ   ณ
+btReactionInRealTime ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤู   ณ   ณ
+                                           ณ   ณ
+btPersistentMouseControl ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤู   ณ
+                                               ณ
+btPressed ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤู
+
+
+
+2.อออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+
+Costanti definite per la manipolazione dei flags:
+
+                                        Descrizione
+อออออออออออออออออออออออออัอออออออออออออออออออออออออออออออออออออออออออออออออออ
+btPressed                ณ Se 1 allora il tasto  premuto, altrimenti 
+                         ณ rilasciato.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+btPersistentMouseControl ณ Se 1 allora il metodo Reaction mantine il
+                         ณ controllo del mouse fino a quando il bottone del
+                         ณ mouse non viene rilasciato per determinare se il
+                         ณ bottone viene premuto o no, altrimenti cambia lo
+                         ณ stato del bottone da premuto a rilasciato o viceversa
+                         ณ e aspetta che il tasto del mouse venga rilasciato.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+btReactionInRealTime     ณ Se 1 allora il tasto manda un messaggio come
+                         ณ viene premuto, altrimenti il messaggio lo manda
+                         ณ solo se il bottone del mouse viene rilasciato nella
+                         ณ regione del buttone.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+btRepeatButtonReaction   ณ Se 1 allora il tasto reagisce fino a quando 
+                         ณ premuto.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+btFinalState             ณ Se 1 allora al termine del controllo di
+                         ณ OTButton.ExecMessage, il bottone  stato premuto,
+                         ณ altrimenti no.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+btInternalState          ณ Usato solo da OTCheckButton e figli.
+                         ณ Se 1 indica che il bottone  settato, altrimenti
+(OTCheckButton)          ณ non  settato.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤมฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+
+
+
+
+
+
+
+อออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+*****************************************************************************
+อออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+
+
+DESCRIZIONE DEI FLAGS "WinInfo" dell'oggetto OTWindow.
+
+1. Mappa dei bits
+2. Costanti definite per la manipolazione dei flags
+
+
+
+1.อออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+
+Mappa dei bits:
+
+
+            ฺฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฟ
+            ณ            WinInfo            ณ
+            ษอออัอออัอออัอออัอออัอออัอออัอออป
+            บ   ณ \ ณ \ ณ \ ณ \ ณ R ณ R ณ R บ
+            ศอัอฯอออฯอออฯอออฯอออฯอัอฯอัอฯอัอผ
+wndMov8 ฤฤฤฤฤฤู                   ณ   ณ   ณ
+                                  ณ   ณ   ณ
+wndSelected ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤู   ณ   ณ
+                                      ณ   ณ
+wndReduced ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤู   ณ
+                                          ณ
+wndZoomed ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤู
+
+
+
+N.B.: Le caselle contrassegnate con R sono flags a sola lettura.
+
+
+
+2.อออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+
+Costanti definite per la manipolazione dei flags:
+
+                                        Descrizione
+อออออออออออออออออออออออออัอออออออออออออออออออออออออออออออออออออออออออออออออออ
+wndMov8                  ณ Se settato allora per l'oggetto  abilitato il
+                         ณ movimento horizzontale di 8 pixels in 8 pixels.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+wndSelected              ณ 1 se la finestra  selezionata.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+wndReduced               ณ 1 se la finestra  ridotta.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+wndZoomed                ณ 1 se la finestra  ingrandita.
+ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤมฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ฺ  ย  ฟ    ษ  ห  ป     ี  ั  ธ    ึ  า  ท
+
+ ร  ล  ด    ฬ  ฮ  น     ฦ  ุ  ต    ว  ื  ถ
+
+ ภ  ม  ู    ศ  ส  ผ     ิ  ฯ  พ    ำ  ะ  ฝ
+
+

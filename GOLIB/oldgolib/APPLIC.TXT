@@ -1,0 +1,90 @@
+Informazioni sul tipo TMessage.
+-------------------------------
+
+
+- I messaggi con codice tipo $1xxx sono messaggi che vengono direttamente
+  eseguiti dal sistema senza essere passati a nessun oggetto.
+
+
+- I messaggi si riferisce ad un evento proveniente da Mouse se il campo
+  TMessage.Message ha un valore tipo 8xxxh.
+
+Struttura del campo:
+
+        ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿
+        ³             TMessage.Message  (MOUSE)                         ³
+        ÉÍÍÍÑÍÍÍÑÍÍÍÑÍÍÍÑÍÍÍÑÍÍÍÑÍÍÍÑÍÍÍËÍÍÍÑÍÍÍÑÍÍÍÑÍÍÍÑÍÍÍÑÍÍÍÑÍÍÍÑÍÍÍ»
+        º 1 ³ 0 ³ 0 ³ 0 ³ \ ³ \ ³ \ ³   º   ³ \ ³ \ ³ \ ³ \ ³ \ ³   ³   º
+        ÈÍÑÍÏÍÍÍÏÍÍÍÏÍÑÍÏÍÍÍÏÍÍÍÏÍÍÍÏÍÑÍÊÍÑÍÏÍÍÍÏÍÍÍÏÍÍÍÏÍÍÍÏÍÍÍÏÍÑÍÏÍÑÍ¼
+          ³           ³               ³   ³                       ³   ³
+          ÀÄÄÄÄÄÂÄÄÄÄÄÙ               ³   ³                       ³   ³
+                ³                     ³   ³                       ³   ³
+Evento Mouse ÄÄÄÙ                     ³   ³                       ³   ³
+                                      ³   ³                       ³   ³
+Bit di Multiclicking (**)ÄÄÄÄÄÄÄÄÄÄÄÄÄÙ   ³                       ³   ³
+                                          ³                       ³   ³
+Stato del bottone (*)ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ                       ÀÄÂÄÙ
+                                                                    ³
+Numero del bottone ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
+
+
+(*)  Se il bit Š settato allora il tasto Š stato premuto, altrimenti
+     rilasciato (1=premuto/0=rilasciato).
+
+(**) Se il bit Š settato allora il messaggio si riferisce ad un evento
+     di multiclicking.
+
+
+
+
+
+Campi relativi ad un evento del mouse:
+- Mcx;
+- Mcy;
+- Clicks;
+- Shifts.
+
+
+
+
+
+Campi relativi ad un evento della tastiera:
+- KeyStroke;
+- Character;
+- ScanCode;
+- Shifts.
+
+
+
+
+
+A RIGUARDO DEGLI HOT SPOTS.
+
+  L'allocazione degli Hot Spots avviene memorizzando solo il cursore
+  che deve essere visualizzato quando il puntatore Š in una determinata
+  regione. Il collegamento tra il cursore e la regione corrispondente
+  avviene se nella display-list sia presente un oggetto che nel
+  campo CursorID abbia memorizzato l'identificatore di un cursore
+  precedentemente allocato. In questo modo quando il puntatore sar…
+  all'interno della regione di lavoro di tale oggetto il cursore
+  cambier… aspetto.
+
+  Quando il puntatore del mouse si sposta, allora l'Application controller
+  determina il nuovo oggetto puntato dal mouse scandendo sempre la display-list
+  a partire dalla ROOT e una volta trovato l'oggetto interessato
+  richiede a questo l'identificatore del CursorMap per impostare l'aspetto
+  del cursore quando esso Š sopra lui.
+
+  E' importante notare che se un cursore viene installato "n" volte, allora
+  deve essere eseguito "n" volte il comando di rimozione del cursore dalla
+  memoria. Questo affichŠ un oggetto non elimini un cursore che Š utile ad
+  un altro oggetto e che uno stesso cursore che serve a pi— oggetti non venga
+  installato pi— di una volta.
+
+  Per vedere se un cursore Š gia installato viene fatto un controllo sul
+  suo identificatore e non sul suo tracciato binario. Quindi Š possibile
+  che vengano memorizzati pi— cursori uguali dal punto di vista binario, ma
+  con identificatori diversi.
+
+
+

@@ -1,0 +1,82 @@
+   CONTROLLO DEGLI EVENTI DA TASTIERA IN COMBINAZIONE CON GLI EVENTI
+                   DA PEROFERICHE DI PUNTAMENTO.
+
+------------------------------------------------------------------------
+
+  Gli eventi provenienti dalla tastiera servono per accedere direttamente
+alle funzioni dell'applicazione con una combinazione di tasti oppure
+per editare un testo in una edit box o con un word processor.
+
+  Nella gestione dei KeyEvent (eventi provenienti adalla tastiera)
+l'application controller provvederÖ a spedire tale evento all'oggetto
+correntemente selezionato (selezionato non vuol dire puntato dal cursore
+del mouse).
+  L'oggetto che riceve tale messaggio deve provvedere al dispach con una
+struttura case.
+
+
+
+
+
+
+
+
+
+
+
+----------------------------------------------------------------------------
+---VECCHIE CONSIDERAZIONI---------------------------------------------------
+----------------------------------------------------------------------------
+
+  Gli eventi provenienti dalla tastiera servono per accedere direttamente
+alle funzioni dell'applicazione con una combinazione di tasti oppure
+per editare un testo in una edit box o con un word processor.
+
+
+  Analizzando il primo scopo dei KeyEvents (chiamerï cosç gli eventi da
+tastiera) questi devono essere intercettati e poi analizzati per vedere
+se all'evento (la pressione di un tasto o di una combinazione di tasti)
+ä associata una particolare funzione.
+  Intanto bisogna capire che ogni oggetto puï reagire ad una serie di KeyEvents.
+  Perciï si puï impostare una struttura ad albero in cui ogni ramo rappresenta
+una lista di KeyEvents di un particolare oggetto.
+  Quindi se un oggetto deve reagire a dei KeyEvents deve, al momento della
+sua inizializzazione, richiedere al sotto-sistema GOLIB che gestisce
+l'applicazione un ramo in cui verranno allocati tutti i tipi di KeyEvents a
+cui l'oggetto puï rispondere.
+  Diremo, quindi, che ogni ramo  rappresenta la lista dei KeyEvents a cui
+un oggetto puï rispondere.
+  La struttura ad albero ä utile per quando l'oggetto deve essere cancellato
+dalla memoria (deinizializzato). In questo caso devono essere cancellati tutti
+i dati che si riferiscono all'oggetto e quindi anche la lista dei KeyEvents ad
+esso associata (se esiste).
+  Questa cancellazione puï avvenire in automatico, e in questo caso viene
+effettuata da "OTView.Done" o direttamente dal distruttore dell'oggetto
+interessato.
+  La cancellazione in automatico avviene andando a scandire l'albero cercando
+il ramo associato all'oggetto.
+
+  A questo punto possiamo passare ad analizzare il secondo scopo dei KeyEvents:
+l'editazione di un testo.
+  In questa operazione ä importante premettere che su di una macchina l'utente
+puï operare solo su di editor alla volta, ossia possono essere attivati pi˘ task
+di editing contemporaneamente, ma puï essere operativo almassimo uno di questi
+task alla volta. Cioä, per fare un esempio pratico, in una dialog box possono
+esistere pi˘ caselle di editing contemporaneamente, ma l'utente modificherÖ il
+contenuto delle varie caselle una per volta.
+  Un'altra premessa da fare ä che un editor riceve tutti quei KeyEvents che non
+appartengono alla prima categoria, ossia che non servono per attivare una particoalre
+funzione dell'applicazione.
+  Da queste premesse, quindi, possinamo passare all'analisi della soluzione del
+problema.
+  Se solo un editor puï essere operativo (selezionato), allora puï essere utilizzato
+un flag per capire se ä selezionato un editor e un puntatore che punti all'editor
+selezionato.
+  Quindi quando viene intercettato un KeyEvent allora viene dapprima scandito l'albero e
+se non viene trovato nessun oggetto che possa rispondere all'evento, allora, se ä
+selezionato un editor, l'evento verrÖ passato all'editor.
+
+
+  Puï capitare che esistano contemporaneamente pi˘ oggetti che possono rispondere al
+medesimo KeyEvent.
+  In questo caso l'evento verrÖ passato all'oggetto che per primo si ä reso disponibile.

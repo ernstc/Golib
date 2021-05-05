@@ -1,0 +1,147 @@
+Le risorse vengono prima memorizzate in un file binario di estensione RCG.
+
+Una volta terminata la creazione del file RCG Š necessario convertire
+tale file in un formato oggetto di estensione GLB.
+
+Il formato GLB contiene una tabella ordinata per un pi— veloce accesso
+alle risorse ed Š questo formato che verr… utilizzato da GOLIB.
+
+Inoltre, mentre nel formato RCG, per le risorse di tipo cursore, Š contenuto
+un path che collega ad un altro file binario con la descrizione binaria della
+risorsa, nel formato GLB tali collegamenti esterni vengono risolti incorporando
+tutto in unico file.
+
+____________________________________________________________________________
+****************************************************************************
+
+
+
+Struttura del file binario di risorse RCG.
+------------------------------------------------
+
+/* inizio del file */
+
+WORD     =>  versione
+
+LONGINT  =>  Numero di risorse
+
+
+/* per ogni risorsa */
+
+LONGINT  =>  indice prossima risorsa
+WORD     =>  tipo risorsa (0000/0001/0002)
+LONGINT  =>  ID risorsa
+WORD     =>  Attributi della risorsa
+
+
+/* caso tipo risorsa = 0000 (Fine delle risorse) */
+
+{vuoto}
+{indice prossima risorsa = dimensione del file}
+
+
+/* caso tipo risorsa = 0001 (hot spots package) */
+
+WORD     =>  Numero di risorse nel package
+
+    /* ripetuta per il numero di risorse nel package */
+    WORD   =>  x1
+    WORD   =>  y1
+    WORD   =>  x2
+    WORD   =>  y2
+    WORD   =>  IDCursor
+    WORD   =>  Message
+
+
+/* caso tipo risorsa = 0002 (cursore) */
+
+WORD     =>  N = numero di bytes che seguono
+N BYTEs  =>  stringa ASCIIZ in cui Š contenuto il perscorso completo del
+             file in cui Š contenuta la descrizione binaria del cursore
+
+
+____________________________________________________________________________
+****************************************************************************
+
+
+
+Struttura del file oggetto di risorse GLB.
+------------------------------------------------
+
+/* inizio del file */
+
+8 BYTEs  =>  Contengono la seguente stringa "RES file"
+
+BYTE     =>  #26
+
+WORD     =>  versione
+
+LONGINT  =>  Numero di risorse
+
+  /*--------------------------------*/
+ /* TABELLA D'ACCESSO ALLE RISORSE */
+/*--------------------------------*/
+
+   (la tabella Š ordinata secondo il campo ID)
+
+   /* per ogni elemento della tabella */
+
+   LONGINT  =>  ID risorsa
+   LONGINT  =>  indice risorsa
+
+
+  /*------------------*/
+ /* Per ogni risorsa */
+/*------------------*/
+
+WORD     =>  Attributi della risorsa
+WORD     =>  tipo risorsa (0001/0002)
+
+
+/* caso tipo risorsa = 0001 (hot spots package) */
+
+WORD     =>  Numero di risorse nel package
+
+    /* ripetuta per il numero di risorse nel package */
+    WORD   =>  x1
+    WORD   =>  y1
+    WORD   =>  x2
+    WORD   =>  y2
+    WORD   =>  IDCursor
+    WORD   =>  Message
+
+
+/* caso tipo risorsa = 0002 (cursore) */
+
+32 WORDs =>  descrizione binaria del cursore
+WORD     =>  hot spot x
+WORD     =>  hot spot y
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

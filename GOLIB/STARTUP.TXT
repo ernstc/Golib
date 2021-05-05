@@ -1,0 +1,258 @@
+COSA SUCCEDE DURANTE IL STARTUP E IL SHUTDOWN DELL'APPLICAZIONE.
+----------------------------------------------------------------
+
+
+STARTUP dei vari moduli in ordine alfabetico.
+
+
+1. APPLIC
+	Inizio StartUp
+		{ Installazione della procedura di uscita }
+		ExitProcedure:=exitProc;
+		exitProc:=@ExitApplic;
+		GetIntVec($1c,@Int1C);
+	Fine Startup
+
+2. BITMAPS
+	Nessun codice di StartUp
+
+3. CODICI
+	Nessun codice di StartUp
+
+4. DISPFILE
+	Nessun codice di StartUp
+
+5. FONTS
+	Inizio StartUp
+		_system_.Init;
+		_serif8_.Init;
+		_serif10_.Init;
+		cour.Init;
+		symbole4.Init;
+		symbole6.Init;
+		serife83.Init;
+
+		Work_Directory:='c:\tp7\';
+		_system_.LoadFontFrom(Work_Directory+'vgasys.fnt');
+		_serif8_.LoadFontFrom(Work_Directory+'serife.fnt');
+		_serif10_.LoadFontFrom(Work_Directory+'sserife.fnt');
+		cour.LoadFontFrom(Work_Directory+'cour90.fnt');
+		symbole4.LoadFontFrom(Work_Directory+'symbole4.fnt');
+		symbole6.LoadFontFrom(Work_Directory+'symbole6.fnt');
+		serife83.LoadFontFrom(Work_Directory+'serife83.fnt');
+
+		PrecExitProc:=GraphExitProc;
+		GraphExitProc:=@FontExitProc;
+		BufferPtr:=nil;
+		BufferPartitions:=nil;
+		MaxPartitionPtr:=nil;
+		MaxDimContiguos:=0;
+	Fine StartUp
+
+6. GOLIB8
+	Inizio StartUp
+		DeallocFunc:=nil;
+		HeapError:=@GolibHeapFunc;
+
+		{GetIntVec($00,Int00Save);
+		SetIntVec($00,Addr(Golib_Interrupt00));}
+
+		{ Inizializzazione delle variabili che indicano i font da utilizzare nei vari
+  		  oggetti. }
+  		IntestFont:=@_system_;
+		{ Inizializzazione delle variabili delle procedure di inizializzazione. }
+  		PrecInitProc:=GraphEntryProc;
+  		PrecDoneProc:=GraphExitProc;
+  		GraphEntryProc:=@InitGOLIB;
+		GraphExitProc:=@DoneGOLIB;
+
+		NullObj:=@NullObj;
+		All_Objects:=@All_Objects;
+
+		{ InizializzaGraficaMAX;}
+  		NullRect.DimX:=-3000;
+  		NullRect.DimY:=+3000;
+
+  		Sfondo:=nil;
+
+  		GetIntVec($09,Int09Save);
+	Fine StartUp
+
+7. GRAFTOOL
+	Inizio StartUp
+		with VideoDC do begin
+		  piano[0]:=ptr($A000,0);
+		  piano[1]:=ptr($A000,0);
+		  piano[2]:=ptr($A000,0);
+		  piano[3]:=ptr($A000,0);
+		end;
+	Fine StartUp
+
+8. G_UTILE
+	Nessun codice di StartUp
+
+9. MOUSE
+	Nessun codice di StartUp
+
+10. STRINGS
+	Nessun codice di StartUp
+
+
+
+
+StartUp dell'applicazione.
+--------------------------
+
+
+Codice attivato dalla procedura "InizializzaGrafica" del modulo GRAFTOOL:
+(N.B.: 	I collegamenti del codice di startup dei vari moduli con la procedura
+	"InizializzaGrafica" avviene tramite la variabile "GraphEntryProc" )
+
+ 1. GOLIB8.InitGolib	(Solo se il modulo GOLIB8 Š linkato all'applicazione.
+ 			 In questo caso per far partire l'applicazione bisogna
+			 lanciare il gestore dell'applicazione che provvede alla
+			 riattivazione del video. Nel caso il gestore non venisse
+			 lanciato allora non si avr… nessun output a video.)
+
+ 	Inizio InitGolib
+        	GolibPresent:=true;
+       		asm   { Disattiva il refresh della memoria video }
+         	  MOV AH,12H
+       		  MOV bl,36H
+       		  MOV al,1
+       		  INT 10H
+       		end;
+       		FullRect.Assign(0,0,_MaxXResolution,_MaxYResolution);
+     		{ Inizializzazione dei vincoli per il gestore dell'evento di movimento degli
+     		  oggetti. }
+       		EvMoveDirection:=All;
+       		EvMoveRange:=NullRect;
+       		ResetMouse;
+       		ShowMouseCursor;
+       		if PrecInitProc<>nil then TProc(PrecInitProc);
+
+       		InitDISPFILE;
+       		InitEventManager;
+        Fine InitGolib
+
+        Inizio DISPFILE.InitDISPFILE
+       		{Inizializzazione della display-list.}
+       		primo:=nil;
+       		ultimo:=nil;
+       		RectSortMethod:=FIFO;
+       		new(BlankBar,Init(Null_ID,FullRect,1,0));
+        Fine DISPFILE.InitDISPFILE
+
+        Inizio APPLIC.InitEventManager
+       		{ Inizializza le variabili per l'Event Buffer }
+       		EvBuffer:=nil;
+       		{ Inizializza l'Event Buffer }
+       		CreateEvBuffer;
+       		precMCX:=0;
+       		precMCY:=0;
+       		precBtnStatus:=0;
+       		MultipleMClickDelay:=13;
+       		{ Effettua il setup di AppController }
+       		EventCtrlSetup;
+       		{ Installa EventController all'interrupt 1Ch }
+       		SetIntVec($1c,@EventController);
+        Fine APPLIC.InitEventManager
+
+
+
+-----------------------------------------------------------------------------
+
+
+SHUTDOWN dei vari moduli in ordine alfabetico.
+
+
+1. APPLIC
+	Inizio ExitProc: ExitApplic
+       		{ Ripristino degli interrupts }
+       		SetIntVec($1C,@Int1C);
+       		if ExitProcedure<>nil then TProc(ExitProcedure);
+	Inizio ExitProc: ExitApplic
+
+2. BITMAPS
+	Nessun codice di ShutDown
+
+3. CODICI
+	Nessun codice di ShutDown
+
+4. DISPFILE
+	Nessun codice di ShutDown
+
+5. FONTS
+	Nessun codice di ShutDown
+
+6. GOLIB8
+	Nessun codice di ShutDown
+
+7. GRAFTOOL
+	Inizio ExitProc: ShutDown  	(Solo se Š stata lanciata "InizializzaGrafica"
+					 all'inizio del programma principale.)
+        	if ShotDownExecuted then exit;
+       		if GraphExitProc<>nil then TProc(GraphExitProc);
+       		{ Scaricamento dei driver grafici dalla memoria }
+       		if precExitProc<>nil then TProc(precExitProc);
+       		closegraph;
+       		ShotDownExecuted:=true;
+       		GraphicModeLoaded:=false;
+       		Halt(0);
+        Fine ExitProc: ShutDown
+
+8. G_UTILE
+	Nessun codice di ShutDown
+
+9. MOUSE
+	Nessun codice di ShutDown
+
+10. STRINGS
+	Nessun codice di ShutDown
+
+
+
+
+ShutDown dell'applicazione.
+--------------------------
+
+
+Codice attivato dalla procedura "ShutDown" del modulo GRAFTOOL:
+(N.B.: 	I collegamenti del codice di ShutDown dei vari moduli con la procedura
+	"ShutDown" avviene tramite la variabile "GraphExitProc" )
+
+ 1. FONTS.FontExitProc		(Solo se il modulo FONTS Š linkato all'applicazione.)
+
+ 	Inizio FontExitProc
+       		if PrecExitProc<>nil then TProc(PrecExitProc);
+       		ClearFontBuffer;
+       		if (BufferPtr<>nil) and BufferInHeap then FreeMem(BufferPtr,DimBuffer);
+        Fine FontExitProc
+
+ 2. GOLIB8.DoneGolib		(Solo se il modulo GOLIB8 Š linkato all'applicazione.)
+
+ 	Inizio DoneGolib
+       		{SetIntVec($00,Int00Save);}
+       		SetIntVec($09,Int09Save);
+
+       		DoneDISPFILE;
+
+       		HideMouseCursor;
+       		if PrecDoneProc<>nil then TProc(PrecDoneProc);
+        Fine DoneGolib
+
+        Inizio DoneDISPFILE
+       		{Deinizializzazione della display-list.}
+       		lookvideo:=LookVideoOnShutDown;
+       		dispose(BlankBar,Done);
+       		while Primo<>nil do begin
+         	  bufV:=Primo;
+       		  if seg(bufV^)<>DSeg then dispose(bufV,Done)
+                	              else bufV^.done;
+             	  {$IFDEF Debugging}
+           	  if WaitInShutDown then
+             	  if WaitDelay<0 then readkey
+                                 else delay(WaitDelay);
+         	  {$ENDIF}
+       		end;
+        Fine DoneDISPFILE

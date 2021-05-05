@@ -1,0 +1,175 @@
+Ernesto Cianciotta
+
+
+----------------------------------------------------------------------------
+Data: 19/11/94
+
+Titolo:                IDENTIFICATORI MODIFICABILI
+
+Il campo "ID" Š il campo di identificazione dell'oggetto, ma non solo.
+Esso rappresenta un canale di comunicazione con il padre e questa
+caratteristica deriva dalla strutturra del gestore degli eventi.
+
+Gli oggetti del modulo "Menu" devono sfruttare questa caratteristica e
+cambiare il valore del loro campo di identificazione a seconda dell'opzione
+scelta.
+
+----------------------------------------------------------------------------
+Data: 18/8/95
+
+Titolo:                OGGETTI SOTTO LISTA
+
+Nella creazione delle Sublist di oggetto, ossia quelle che fanno capo al
+campo _gruppo_, Š possibile utilizzare sia oggetti dinamici (residenti
+nello HEAP) sia oggetti statici (residenti nel segmento dati).
+
+Un oggetto pu• anche essere indicato come statico se istanziato come OTx,
+mentre dinamico se istanziato come OPx, ossia puntatore all'oggetto OTx.
+
+In alcuni casi qualcuno potrebbe pensare di inserire nella sub-list di uno
+oggetto OTx un oggetto statico incapsulato nello stesso oggetto OTx. Questa
+Š una cosa che non deve mai essere fatta, perchŠ quando l'oggetto incapsulato
+verr… distrutto, se Š appartenente alla sub-list del padre, si verificher…
+un run-time error 204 o un crash di sistema dovuto al fatto che si tenta
+di deallocare della memoria che non Š stata allocata. CioŠ, se l'oggetto
+viene incapsulato come statico (OTx) nello'oggetto in che lo conterr… nella
+sua sub-list, quando viene allocata memoria per l'oggetto padre viene allocata
+memoria sufficente anche per l'oggetto incapsulato. Quindi, all'interno della
+sub-list del padre ci sar… un puntatore all'oggetto OTx che sar… un puntatore
+all'interno del blocco allocato per il padre.
+Perci• se si vuole incapsulare un oggetto
+che deve entrare a far parte della sublist Š bene farlo in modo dinamico, ossia
+tenendo nell'oggetto OTx un puntatore a tale oggetto.
+
+Questo problema nasce dal fatto che la sub-list viene distrutta dal padre il
+quale percorre la sub-list che Š una lista di puntatori. Tali puntatori
+vengono considerati come puntatori ad oggetti allocati nel segmento dati
+nel caso in cui il segmento del puntatore sia uguale al segmento dati, mentre
+vengono considerati come puntatori ad oggetti allocati nello HEAP in tutti
+gli altri casi.
+Nel primo caso l'oggetto viene distrutto chiamando semplicemente il distruttore:
+
+  oggetto^.Done;
+
+Nel secondo caso l'oggetto viene distrutto con la seguente istruzione:
+
+  dispose( oggetto, Done);
+
+
+
+Esempio di errato e corretto incapsulamento di oggetti golib all'interno di
+oggetti golib:
+
+
+             OTx = object(OTView)
+                constructor Init(...);
+                ...
+             private
+                lista:OTListViewer;                    <- ERRATO
+             end;
+         __________________________________________________________
+
+             OTx = object(OTView)
+                constructor Init(...);
+                ...
+             private
+                lista:OPListViewer;                    <- CORRETTO
+             end;
+
+
+
+Questo problema PUO' ESSERE AGGIRATO solo se l'oggetto OTx non appartiene
+al ramo dell'oggetto OTView. In entrambi i casi per aggirare
+il problema si deve procedere alla creazione e alla distruzione della sublist
+senza affidarsi ai metodi predefiniti, ossia creando un distruttore per
+l'oggetto che chiami il metodo "DestrySubList" che chiama tutti i distruttori
+degli oggetti della sub-list senza tentare di deallocarli dallo HEAP, oppure
+inserire nel distruttore delle istruzioni che distruggano in modo corretto
+gli oggetti uno a uno.
+
+             OTx = object(OTView)
+                constructor Init(...);
+                destructor Done; virtual;
+                ...
+             private
+                lista:OTListViewer;            <- ESATTO a patto, PERO', che
+             end;                                 esista il distruttore
+                                                  e che esso contenga
+                                                  le istruzioni indicate.
+
+
+
+Il metodo "LinkTo" Š utile nella creazione di liste di oggetti.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+13/2/96---01-----------------NOTA BENE------------------------------------
+
+Oggetto: GESTIONE EVENTI
+
+E' necessario passare dalla versione 8.0 alla versione 9.0 della libreria
+GOLIB.
+
+Il passaggio Š necessario perchŠ deve cambiare il metodo di gestione degli
+eventi che prevede la riscrittura di tutti quei metodi che nella versione
+8.0 reagiscono agli eventi.
+
+
+
+13/2/96---02--------------------------------------------------------------
+
+Oggetto: GESTIONE EVENTI - BUFFERS
+
+E' necessario dedicare una regione dello HEAP dedicata ad allocare gli
+eventi che si verificano. Ogni evento ha bisogno di 12 bytes.
+
+Nella gestione degli eventi, la protezione serve perchŠ sia l'applicazione
+che il gestore dell'applicazione possono concorrere contemporaneamente alla
+stessa memoria nello HEAP. Questo pu• accadere perchŠ il gestore Š collegato
+all'interrupt hardware 1Ch e quindi potrebbe interrompere un'operazione di
+allocazione di memoria dinamica da parte dell'applicazione e quindi tentare
+di allocare memoria a sua volta. Da questo potrebbe nascere un conflitto.
+
+
+
+
+14/2/96---01---------------------------------------------------------------
+
+Oggetto: GESTIONE EVENTI
+
+L'operazione indicata dalla nota 13/2/96-01 pu• essere evitata gestendo la
+coda degli eventi cos come viene gestito il buffer della tastiera, ossia
+gli eventi vengono allocati in un'area di memoria dedicata e l'applicazione
+non deve fare altro che verificare se si trovi o meno un evento per lei.
+
+Quindi i messaggi non vengono spediti dal gestore all'applicazione, ma Š
+l'applicazione che deve provvedere a recuperare i messaggi dalla coda.
+
+In questo si passa dalla versione 8.0 alla versione 8.1 della libreria
+che invece di usare le funzioni "READKEY", "PositionAndButtonStatus",
+ecc... per verificare che si verifichi un evento, utilizzer… altre funzioni
+che restituiranno eventi quando questi si trovano nella coda.
+
+
+
+16/2/96---01----------------------------------------------------------------
+
+Per la memorizzazione degli eventi sar… utilizzato il metodo utilizzato per
+la gestione del buffer della tastiera.
+
+

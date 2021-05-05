@@ -1,0 +1,1283 @@
+{ by ERNESTO CIANCIOTTA }
+
+{******************************************************}
+{*                                                    *}
+{*    Modulo contenente l'oggetto                     *}
+{*    - OPFont ed un                                  *}
+{*    - Font Manager                                  *}
+{*                                                    *}
+{*    Scritto con Turbo Pascal ver 7.0                *}
+{*              e Turbo Assembler 2.0                 *}
+{*                                                    *}
+{******************************************************}
+
+{ Files oggetto linkati a questo modulo:
+  - DRAWCHVD.OBJ
+  - CH_CORS .OBJ
+  - DRAWCHBW.OBJ
+}
+
+
+{$X+}
+{$D+}
+{$L+}
+
+
+UNIT FONTS;
+
+
+INTERFACE
+
+uses
+     paths,
+     crt,
+
+     graph,
+     strings,
+     graftool;
+
+
+type
+     TAlignText = (TextLeft,TextRight,TextCenter,Justified);
+
+
+const
+
+    TextColor      : word        = 15;
+
+    DefaulDimBuffer              = 20000;
+
+    FontsRilocation: boolean     = false;
+      { Stabilisce il metodo da adottare quando si deve allocare
+        un nuovo fonts nel buffer.
+        Se = TRUE allora verrÖ utilizzato il metodo della rilocazione
+        dei fonts, altrimenti verrÖ utilizzato un metodo di allocazione
+        dinamica.
+      }
+
+
+{ Procedure e funzioni per la gestione dei font di Windows(TM). }
+type
+     TVetByte = array [0..1] of byte;
+
+     TFontStyle = (Normal,Italic,Bold,Italic_Bold,Underlined,Stikeout);
+
+     PFontHeader = ^TFontHeader;
+     TFontHeader = record
+        decVer             :byte;
+        VerFont            :byte;
+        DimFontFile        :longint;
+        Copyright          :array[1..60] of char;
+     {} unknown_1          :word;
+        Points             :word;
+        VertRes            :word;
+        HorizRes           :word;
+        Ascent             :word;
+        Int_Leading        :word;
+        Ext_Leading        :byte;
+        Attributes         :record
+     {}        (* unknown_2 *) Bold       :byte;
+                               Italic     :byte;
+                               Underlined :byte;
+                               Strikeout  :byte;
+                            end;
+        Weight             :word;
+        CharacterSet       :byte;
+        Width              :word;
+        Height             :word;
+        Proportional       :byte;
+        AverageWidth       :word;
+        MaximumWidth       :word;
+        First              :byte;
+        Last               :byte;
+        Default            :byte;
+        Break              :byte;
+     {} unknown_3          :longint;
+     {} unknown_4          :word;
+        IndexFontName      :longint;
+     {} unknown_5          :longint;
+        IndexStartBitFonts :longint;
+     end;
+
+     {-----------------------------------------------------------}
+
+     TFontCharInfo_200 = record
+        CharWidth  :word;
+        CharIndex  :word;
+     end;
+
+
+     PFontIndexVet_200 = ^TFontIndexVet_200;
+     TFontIndexVet_200 = array[0..0] of TFontCharInfo_200;
+
+     {-----------------------------------------------------------}
+
+     TFontCharInfo_300 = record
+        CharWidth  :word;
+        CharIndex  :longint;
+     end;
+
+
+     PFontIndexVet_300 = ^TFontIndexVet_300;
+     TFontIndexVet_300 = array[0..0] of TFontCharInfo_300;
+
+     {-----------------------------------------------------------}
+
+     PWinFont = ^TWinFont;
+     TWinFont = record
+        case byte of
+        0: (Source:TVetByte);
+        1: (Header:TFontHeader);
+     end;
+
+
+     OPFont = ^OTFont;
+     OTFont = object
+     private
+        registrato    :boolean;
+        Nome_del_file :PChar;
+     public
+        Font          :PWinFont;
+        procedure Init;
+        procedure Done;
+        procedure LoadFontFrom(FileName:string);
+        procedure RegisterFont(FontPointer:pointer);
+        procedure Select;
+        procedure SetStyle(style:TFontStyle; newState:byte);
+        { Procedure che accetano le stringhe PASCAL }
+        procedure DrawText(x,y:longint; AlignText:TAlignText; s:string);
+        procedure DrawTextIn(x,y:longint; AlignText:TAlignText; s:string);
+        function  TextLength(s:string; StartCh,EndCh:byte):longint;
+        { Procedure che accetano le stringhe ASCIIZ }
+        procedure __DrawText(x,y:longint; AlignText:TAlignText; s:PChar);
+        procedure __DrawTextIn(x,y:longint; AlignText:TAlignText; s:PChar);
+        function  __TextLength(s:PChar; StartCh,EndCh:word):longint;
+        function  Proportional:boolean;
+        function  GetFontVer:word;
+        function  GetPicth:word;
+        function  GetHeight:word;
+        function  MemOccuped:longint;
+        function  GetFontName:PChar;
+        function  GetFileFontName:PChar;
+        { Caricamento e Scaricamento del font dalla memoria }
+        procedure Carica;
+        procedure Scarica;
+     end;
+
+
+
+
+var
+     SelectedFont:PWinFont;
+     cour,
+     symbole4,
+     symbole6,
+     serife83,
+     _system_,
+     _serif8_,
+     _serif10_: OTFont;
+
+
+
+const
+     StartIndexVet_200 = 118;
+     StartIndexVet_300 = 148;
+
+
+type
+
+     TBuffer = record
+        BufferPtr        : pointer;
+        BufferInHeap     : boolean;
+        BufferPartitions : pointer;
+        MaxPartitionPtr  : pointer;
+        MinPriorityNum   : byte;
+        MaxDimContiguos  : word;
+     end;
+
+
+
+{ Procedure per la gestione del Buffer dedicato ai Fonts.}
+   procedure AssignFontBuffer(BufPtr:pointer; size:word; BufInHeap:boolean; MovFonts:boolean);
+   procedure SetFontBufferSize(size:word; MovFonts:boolean);
+   procedure GetBufferSettings(var Buffer:TBuffer);
+   procedure SetBuffer(var Buffer:TBuffer);
+   procedure ClearFontBuffer;
+
+{ Primitive per la gestione dei Fonts. }
+   procedure LoadFontPas(FileName:string; var font:PWinFont);
+   procedure LoadFont(FileName:PChar; var font:PWinFont);
+   procedure DestroyFont(var font:PWinFont);
+
+{ Primitive per il disegno dei Fonts. }
+   procedure DrawText(x,y:integer;
+                      font:PWinFont;
+                      color:word;
+                      {AlignText:TAlignText;}
+                      text:string);
+
+
+IMPLEMENTATION
+
+uses
+    OpenFile;
+
+
+type
+
+   PWord = ^word;
+
+
+   TPointer = record
+      offset,
+      segment:word;
+   end;
+
+
+   PBufferPartition = ^TBufferPartition;
+   TBufferPartition = record
+      FontSourcePtr : ^PWinFont;    (* Se NIL allora la partizione ä vuota. }
+                                      Serve per porter effettuare una
+                                       rilocazione del font all'interno
+                                       del buffer. *)
+      Displacement  : word;         (* Displacement all'interno del buffer *)
+      DimPartition  : word;         (* Dimensione della partiozione *)
+      Priority      : byte;         (* (max) 1 <= Priority <=255 (min) *)
+      succ          : PBufferPartition;
+   end;
+
+
+var
+
+   BufferPtr        : pointer;   (* Puntatore al buffer *)
+   BufferInHeap     : boolean;   (* Se ä TRUE allora il buffer si trova nello Heap *)
+   BufferPartitions : PBufferPartition;
+   MaxPartitionPtr  : PBufferPartition;
+   MinPriorityNum   : byte;
+   MaxDimContiguos  : word;
+
+
+const
+
+   MaxDimBuf         = 65528;
+   DimBuffer  : word = DefaulDimBuffer;  (* 1 <= DimBuffer <= MaxDimBuf *)
+
+
+
+var
+
+   PrecExitProc: pointer;
+
+
+   function UpCaseStr(s:string):string;
+     var i:word;
+     begin
+       for i:=1 to length(s) do s[i]:=upcase(s[i]);
+       UpCaseStr:=s;
+     end;
+
+
+
+                     { ------ OTFont ------ }
+   procedure OTFont.Init;
+     begin
+       Nome_del_file:=nil;
+       registrato:=false;
+       Font:=nil;
+     end;
+
+
+   procedure OTFont.Done;
+     begin
+       if Nome_del_File<>nil then FreeMem(Nome_del_File,StrLen(Nome_del_File)+1);
+     end;
+
+
+   procedure OTFont.LoadFontFrom(FileName:string);
+     begin
+       FileName:=UpCaseStr(FileName);
+       if ((Nome_del_file<>nil) and (StrCompPas(FileName,Nome_del_File)=0)) then exit;
+       Scarica;
+       registrato:=false;
+       if Nome_del_file<>nil then FreeMem(Nome_del_file,StrLen(Nome_del_file)+1);
+       GetMem(Nome_del_file,byte(FileName[0])+1);
+       StrPCopy(Nome_del_file,FileName);
+     end;
+
+
+   procedure OTFont.RegisterFont(FontPointer:pointer);
+     begin
+       if (Font<>nil) and not registrato then Scarica;
+       registrato:=true;
+       nome_del_file:=nil;
+       Font:=fontPointer;
+     end;
+
+
+   procedure OTFont.Select;
+     begin
+       if Font=nil then Carica;
+     end;
+
+
+   procedure OTFont.SetStyle(style:TFontStyle; newState:byte);
+     begin
+       if Font=nil then exit;
+       case style of
+       Normal      :
+          with Font^.Header do begin
+            with Attributes do begin
+              if Weight=700 then Bold:=1
+                            else Bold:=0;
+              Italic:=0;
+              Underlined:=0;
+              Strikeout:=0;
+            end;
+          end;
+       Italic      : Font^.Header.Attributes.Italic:=newState;
+       Bold        : Font^.Header.Attributes.Bold:=newState;
+       Underlined  : Font^.Header.Attributes.Underlined:=newState;
+       Stikeout    : Font^.Header.Attributes.Strikeout:=newState;
+       end;
+     end;
+
+
+   procedure OTFont.DrawText(x,y:longint; AlignText:TAlignText; s:string);
+     begin
+       if Font=nil then Carica;
+       if AlignText = TextRight then dec(x,TextLength(s,0,0));
+       Fonts.DrawText(x,y,Font,textcolor,s);
+     end;
+
+
+   procedure OTFont.DrawTextIn(x,y:longint; AlignText:TAlignText; s:string);
+     begin
+       if Font=nil then Carica;
+       if AlignText = TextRight then dec(x,TextLength(s,0,0));
+       Fonts.DrawText(x+1,y+1,Font,15,s);
+       Fonts.DrawText(x,y,Font,7,s);
+     end;
+
+{$R-}
+   function OTFont.TextLength(s:string; StartCh,EndCh:byte):longint;
+     var Width,
+         Length:longint;
+         indexChar,
+         Character,
+         First,
+         Last:byte;
+         VetPoint:TPointer;
+         Inizio,Fine:byte;
+     begin
+       if Font=nil then Carica;
+       First:=Font^.Header.First;
+       Last:=Font^.Header.Last;
+       VetPoint:=TPointer(Font);
+       if Font^.Source[1]=2
+       then inc(VetPoint.offset,StartIndexVet_200)
+       else if Font^.Source[1]=3 then inc(VetPoint.offset,StartIndexVet_300);
+       Length:=0;
+
+       if StartCh<1 then begin
+         Inizio:=1;
+         Fine:=byte(s[0]);
+       end
+       else begin
+         Inizio:=StartCh;
+         if Inizio>byte(s[0]) then Inizio:=byte(s[0]);
+         if Fine<1 then Fine:=1;
+         if Fine>byte(s[0]) then Fine:=byte(s[0]);
+         if Inizio>Fine then begin
+           TextLength:=0;
+           exit;
+         end;
+       end;
+
+       for Character:=Inizio to Fine do begin
+         if (byte(s[Character]) in [First..Last]) then begin
+           indexChar:=byte(s[Character])-first;
+           if Font^.Source[1]=2 then      Width:=PFontIndexVet_200(VetPoint)^[indexChar].CharWidth
+           else if Font^.Source[1]=3 then Width:=PFontIndexVet_300(VetPoint)^[indexChar].CharWidth;
+           inc(Length,Width);
+         end;
+       end;
+       TextLength:=Length;
+     end;
+{$R+}
+
+
+   {
+     N.B.:
+
+     Le tre procedure che seguono convertono la stringa ASCIIZ in una stringa
+     in stile PASCAL perchä momentaneamente non esiste una primitiva per il
+     disegno del testo che supporti le stringhe ASCIIZ.
+     Quando queste primitive saranno disponibili queste procedure dovranno
+     essere aggiornate.
+   }
+   procedure OTFont.__DrawText(x,y:longint; AlignText:TAlignText; s:PChar);
+     var Str:string;
+     begin
+       if (s=nil) or (s^=#0) then exit;
+       if Font=nil then Carica;
+       Str:=StrPas(s);
+       if AlignText = TextRight then dec(x,TextLength(Str,0,0));
+       Fonts.DrawText(x,y,Font,textcolor,Str);
+     end;
+
+
+   procedure OTFont.__DrawTextIn(x,y:longint; AlignText:TAlignText; s:PChar);
+     var Str:string;
+     begin
+       if (s=nil) or (s^=#0) then exit;
+       if Font=nil then Carica;
+       Str:=StrPas(s);
+       if AlignText = TextRight then dec(x,TextLength(Str,0,0));
+       Fonts.DrawText(x+1,y+1,Font,15,Str);
+       Fonts.DrawText(x,y,Font,7,Str);
+     end;
+
+
+   function  OTFont.__TextLength(s:PChar; StartCh,EndCh:word):longint;
+     var Count : word absolute EndCh;
+         Inizio: word absolute StartCh;
+         First,
+         Last,
+         sizeCharInfo: byte;
+     begin
+       if (s=nil) or (s^=#0) then begin
+         __TextLength:=0;
+         exit;
+       end;
+       if Font=nil then Carica;
+       First:=Font^.Header.First;
+       Last:=Font^.Header.Last;
+       if StartCh<1 then begin
+         Inizio:=1;
+         Count:=$FFFF; { Indicazione di analisi di tutta la linea }
+       end
+       else
+         if StartCh>EndCh then begin
+           __TextLength:=0;
+           exit;
+         end
+         else Count:=EndCh-StartCh+1;
+       asm
+         push      ds
+         cld
+         { DX funge da sommatore delle lunghezze dei caratteri }
+         xor       dx,dx
+         { Carica l'indirizzo di Font }
+         les       di,Self
+         les       di,DWORD PTR es:[di+5] {Font^}
+         { Carica in sizeCharInfo la dimensione delle informazioni del
+           carattere ed aggiunge il displacement della versione a DI }
+         cmp       BYTE PTR es:[di+1],2
+         jne       @001
+         mov       sizeCharInfo,4
+         add       di,StartIndexVet_200
+         jmp       @002
+@001:
+         cmp       BYTE PTR es:[di+1],3
+         jne       @Fine
+         mov       sizeCharInfo,6
+         add       di,StartIndexVet_300
+@002:
+         lds       si,s         { Carica s in DS:SI }
+         add       si,Inizio
+         dec       si
+         mov       cx,Count
+@Inizio:
+         lodsb
+         { Controlla se AL ä uguale a zero }
+         or        al,al
+         je        @Fine
+         { Controlla se AL ä compreso nell'intervallo [First..Last] }
+         cmp       al,First
+         jb        @Inizio
+         cmp       al,Last
+         ja        @Inizio
+         { Mette in AL il valore IndexChar }
+         sub       al,First
+         { Calcola il displacement }
+         mul       sizeCharInfo
+         mov       bx,ax
+         add       dx,es:[di+bx]
+         loop      @Inizio
+@Fine:
+         pop       ds
+         mov       Count,dx
+       end;
+       __TextLength:=Count;
+     end;
+
+
+   function  OTFont.Proportional:boolean;
+     begin
+       if Font=nil then Carica;
+       if (Font^.Header.Proportional and 1)=1 then Proportional:=true
+                                              else Proportional:=false;
+     end;
+
+
+   function  OTFont.GetFontVer:word;
+     begin
+       if Font=nil then Carica;
+       GetFontVer:=PWord(Font)^;
+     end;
+
+
+   function OTFont.GetPicth;
+     begin
+       if Font=nil then Carica;
+       GetPicth:=Font^.Header.Points;
+     end;
+
+
+   function OTFont.GetHeight;
+     begin
+       if Font=nil then Carica;
+       GetHeight:=Font^.Header.Height;
+     end;
+
+
+   function OTFont.MemOccuped;
+     begin
+       if Font<>nil then MemOccuped:=Font^.Header.DimFontFile
+                    else MemOccuped:=0;
+     end;
+
+
+   function  OTFont.GetFontName:PChar;
+     begin
+       if Font=nil then Carica;
+       GetFontName:=@Font^.Source[Font^.Header.IndexFontName];
+     end;
+
+
+   function  OTFont.GetFileFontName:PChar;
+     begin
+       GetFileFontName:=Nome_del_File;
+     end;
+
+
+   procedure OTFont.Carica;
+     var FontFile:file;
+         DimFile:longint;
+     begin
+       if Font<>nil then exit;
+       Fonts.LoadFont(Nome_del_file,Font);
+     end;
+
+
+   procedure OTFont.Scarica;
+     begin
+       if (Font=nil) or registrato then exit;
+       Fonts.DestroyFont(Font);
+     end;
+
+
+{ **************************************************************}
+{ Procedure per la gestione del buffer dei Fonts.               }
+{ **************************************************************}
+
+{ Procedure esterne }
+   procedure AssignFontBuffer(BufPtr:pointer; size:word; BufInHeap:boolean; MovFonts:boolean);
+     var DimProgressive:word;
+         point:PBufferPartition;
+     begin
+       if BufferPartitions<>nil then begin
+         DimProgressive:=0;
+         point:=BufferPartitions;
+         if MovFonts then asm
+         end
+         else ClearFontBuffer;
+       end;
+       BufferPtr:=BufPtr;
+       BufferInHeap:=BufInHeap;
+       DimBuffer:=size;
+     end;
+
+
+   procedure SetFontBufferSize(size:word; MovFonts:boolean);
+     var DimProgressive:word;
+         point:PBufferPartition;
+         BufPtr:pointer;
+     begin
+       GetMem(BufPtr,size);
+       if BufferPartitions<>nil then begin
+         DimProgressive:=0;
+         point:=BufferPartitions;
+         if MovFonts then asm
+         end
+         else ClearFontBuffer;
+       end;
+       if (BufferPtr<>nil) and BufferInHeap then FreeMem(BufferPtr,DimBuffer);
+       BufferPtr:=BufPtr;
+       BufferInHeap:=true;
+       DimBuffer:=size;
+     end;
+
+
+   procedure GetBufferSettings(var Buffer:TBuffer);
+     begin
+       Buffer.BufferPtr:=BufferPtr;
+       Buffer.BufferInHeap:=BufferInHeap;
+       Buffer.BufferPartitions:=BufferPartitions;
+       Buffer.MinPriorityNum:=MinPriorityNum;
+       Buffer.MaxDimContiguos:=MaxDimContiguos;
+     end;
+
+
+   procedure SetBuffer(var Buffer:TBuffer);
+     begin
+       BufferPtr:=Buffer.BufferPtr;
+       BufferInHeap:=Buffer.BufferInHeap;
+       BufferPartitions:=Buffer.BufferPartitions;
+       MinPriorityNum:=Buffer.MinPriorityNum;
+       MaxDimContiguos:=Buffer.MaxDimContiguos;
+     end;
+
+
+   procedure ClearFontBuffer;
+     var point,
+         p2   : PBufferPartition;
+     begin
+       if BufferPartitions=nil then exit;
+       { Libera tutte le partizioni azzerando i puntatori ai font nel buffer }
+       point:=BufferPartitions;
+       while point<>nil do begin
+         if point^.FontSourcePtr<>nil then point^.FontSourcePtr^:=nil;
+         point:=point^.succ;
+       end;
+       { Cancella tutti gli elementi della lista delle partizioni lascandone
+         solo una }
+       point:=BufferPartitions;
+       p2:=point^.succ;
+       while p2<>nil do begin
+         dispose(point);
+         point:=p2;
+         p2:=p2^.succ;
+       end;
+       { Imposta l'elemento rimasto della lista delle partizioni }
+       with point^ do begin
+         Displacement:=0;
+         DimPartition:=DimBuffer;
+         FontSourcePtr:=nil;
+         Priority:=0;
+       end;
+       MinPriorityNum:=0;
+     end;
+
+
+{ Procedure interne }
+   procedure DeallocPartition(font:pointer);
+     var Displacement:word;
+         Priority:byte;
+         buf,
+         point:PBufferPartition;
+
+     procedure DeallocFont;
+       begin
+         point^.FontSourcePtr^:=nil;
+         { Si presume che buf punti al record precedente di point }
+         if buf^.Priority=0 then begin
+           buf^.succ:=point^.succ;
+           inc(buf^.DimPartition,point^.DimPartition);
+           dispose(point);
+           point:=buf;
+         end
+         else begin
+           point^.FontSourcePtr:=nil;
+           point^.Priority:=0;
+         end;
+         buf:=point^.succ;
+         { Qui buf punta al record successivo di point }
+         if (buf<>nil) and (buf^.Priority=0) then begin
+           inc(point^.DimPartition,buf^.DimPartition);
+           point^.succ:=buf^.succ;
+           dispose(buf);
+         end;
+       end;
+
+     begin
+       if BufferPartitions=nil then exit;
+       Displacement:=TPointer(font).offset;
+       buf:=nil;
+       point:=BufferPartitions;
+       { Ricerca la partizione che contiene il font specificato }
+       while point^.Displacement<>Displacement do begin
+         buf:=point;
+         point:=point^.succ;
+       end;
+
+       if (point=nil) and (buf=nil) then
+         { ERRORE perchä non esiste nessuna partizione che contiene il
+           font specificato! }
+         exit;
+
+       Priority:=point^.Priority;
+       if buf<>nil then DeallocFont  { <- Se non ä il primo della lista }
+       else begin
+         { Se la partizione ä la prima della lista }
+         point^.FontSourcePtr^:=nil;
+         point^.FontSourcePtr:=nil;
+         point^.Priority:=0;
+         buf:=point^.succ;
+         { Qui buf punta al record successivo di point }
+         if (buf<>nil) and (buf^.Priority=0) then begin
+           inc(point^.DimPartition,buf^.DimPartition);
+           point^.succ:=buf^.succ;
+           dispose(buf);
+         end;
+       end;
+       { Sistemazione delle prioritÖ }
+       point:=BufferPartitions;
+       while point<>nil do begin
+         if point^.Priority>Priority then dec(point^.Priority);
+         point:=point^.succ;
+       end;
+       dec(MinPriorityNum);
+     end;
+
+
+   function AllocPartition(var Dest:PWinFont; sizeRequired:word):boolean;
+     var MaxDimC: word;
+         buf,
+         Partition,
+         point: PBufferPartition;
+         DestPtr:TPointer;
+
+
+     procedure AllocFont;
+       var NewDisplacement,
+           DimNewFreePartition: word;
+       begin
+         DimNewFreePartition:=Partition^.DimPartition-sizeRequired;
+         NewDisplacement:=Partition^.Displacement+sizeRequired;
+         point:=Partition^.succ;
+         { Se la partizione successiva a Partition ä vuota allora non
+           siprocederÖ alla creazione di un nuovo elemento nella lista
+           delle partizioni. }
+         if (point<>nil) and (point^.Priority=0) then begin
+           point^.Displacement:=NewDisplacement;
+           inc(point^.DimPartition,DimNewFreePartition);
+         end
+         else begin
+           { Frammentazione della partizione puntata da Partition }
+           new(point);
+           { parte libera }
+           with point^ do begin
+             FontSourcePtr:=nil;
+             Displacement:=NewDisplacement;
+             DimPartition:=DimNewFreePartition;
+             Priority:=0;
+             succ:=Partition^.succ;
+             Partition^.succ:=point;
+           end;
+         end;
+         { parte occupata dal nuovo font }
+         with Partition^ do begin
+           FontSourcePtr:=@Dest;
+           DimPartition:=sizeRequired;
+           Priority:=0;
+         end;
+         { Assegnazione dell'indirizzo }
+         Dest:=Ptr(TPointer(BufferPtr).segment,Partition^.Displacement);
+         { Sistemazione delle prioritÖ }
+         point:=BufferPartitions;
+         while point<>nil do begin
+           if point^.FontSourcePtr<>nil then inc(point^.Priority);
+           point:=point^.succ;
+         end;
+         Inc(MinPriorityNum);
+       end;
+
+     procedure DeallocSuccOfPartition;
+       begin
+         point:=Partition^.succ;
+         with Partition^ do begin
+           inc(DimPartition,point^.DimPartition);
+           succ:=point^.succ;
+         end;
+         if point^.Priority<>0 then point^.FontSourcePtr^:=nil;
+         dispose(point);
+         point:=Partition^.succ;
+         { Nel caso in cui si vengano a trovare affiancate due partizioni
+           vuote, allora si procederÖ ad unirle. }
+         if (point<>nil) and (point^.Priority=0) then begin
+           with Partition^ do begin
+             inc(DimPartition,point^.DimPartition);
+             succ:=point^.succ;
+           end;
+           dispose(point);
+         end;
+       end;
+
+     begin
+       if sizeRequired>DimBuffer then begin
+         Dest:=nil;
+         AllocPartition:=false;
+         exit;
+       end;
+
+       { Se il buffer non ä stato ancora creato allora verrÖ creato in questo
+         momento e verrÖ assegnato subito un puntatore a Dest senza passare dal
+         processo di ricerca di una partizione disponibile }
+       if BufferPtr=nil then begin
+         GetMem(BufferPtr,DimBuffer);
+         BufferInHeap:=true;
+         New(BufferPartitions);
+         with BufferPartitions^ do begin
+           FontSourcePtr:=nil;
+           Displacement:=TPointer(BufferPtr).offset;
+           DimPartition:=DimBuffer;
+           Priority:=0;
+           MinPriorityNum:=0;
+           succ:=nil;
+         end;
+         MaxPartitionPtr:=BufferPartitions;
+         MaxDimContiguos:=DimBuffer;
+         Partition:=BufferPartitions;
+         AllocFont;
+         AllocPartition:=true;
+         exit;
+       end;
+
+       { Ricerca una partiozione capace a soddisfare la rischiesta.
+         In questa fase viene scelta la partizione che ha una dimensione
+         il pió possibile uguale alla dimensione richiesta. Se quindi ci
+         sono pió partizioni capaci, allora tra queste verrÖ scelta la
+         pió piccola. }
+       point:=BufferPartitions;
+       Partition:=nil;
+       while point<>nil do begin
+         if (point^.Priority=0) and
+            (point^.DimPartition>=sizeRequired) then begin
+           if Partition=nil
+           then Partition:=point
+           else if Partition^.DimPartition>point^.DimPartition then Partition:=point;
+         end;
+         point:=point^.succ;
+       end;
+       { Se viene trovata una partizione allora si assegna al font l'indirizzo
+         all'interno del buffer e poi si procede alla frammentazione della
+         partizione in due parti:
+         - una parte (superiore) occupata;
+         - una parte (inferiore) libera.
+         Infine si procede alla sistemazione delle prioritÖ. }
+       if Partition<>nil then AllocFont
+   { Se non viene trovata nessuna partizione libera e capiente, allora
+     siprocederÖ in uno dei seguenti modi:
+
+     1. SENZA RILOCAZIONE DEI FONTS:
+         si scaricaricano i fonts con prioritÖ pió bassa (ossia con
+         il numero di prioritÖ pió alto) fino a quando non si troverÖ una
+         area contigua capace soddisfare la richiesta;
+
+     2. CON RILOCAZIONE DEI FONTS:
+         prima procede a scaricare i fonts con prioritÖ pió bassa (ossia con
+         il numero di prioritÖ pió alto) fino a quando si ricava un'area
+         non contigua capace soddisfare la richiesta e poi si procede alla
+         rilocazione dei fonts per creare un'area contigua.
+   }
+       else if FontsRilocation then begin
+         { CON RILOCAZIONE DEI FONTS }
+
+       end
+       else begin
+         { SENZA RILOCAZIONE DEI FONTS }
+         MaxDimC:=0;
+         { Ciclo che scarica i fonts con prioritÖ minore fino a quando non
+           si viene a creare una partizione libera capiente }
+         while MaxDimC<sizeRequired do begin
+           Partition:=BufferPartitions;
+           point:=nil;
+           { Ricerca la partizione contenente il font con minore prioritÖ }
+           while Partition^.Priority<>MinPriorityNum do begin
+             point:=Partition;
+             Partition:=Partition^.succ;
+           end;
+           { Scarica dal buffer il font con prioritÖ minore e crea cosç una
+             partizione libera pió grande }
+           if point<>nil then begin
+             Partition:=point;
+             DeallocSuccOfPartition;
+             MaxDimC:=Partition^.DimPartition;
+           end
+           else begin
+             { Scarica il font nel caso si trovi nella prima partizione della
+               lista }
+
+             { N.B.: Si presuppone che Partition sia uguale a BufferPartitions }
+             Partition^.FontSourcePtr^:=nil;
+             Partition^.FontSourcePtr:=nil;
+             Partition^.Priority:=0;
+             point:=Partition^.succ;
+             { Unisce eventuali partizioni affiancate vuote }
+             if (point<>nil) and (point^.Priority=0) then begin
+               inc(Partition^.DimPartition,point^.DimPartition);
+               Partition^.succ:=point^.succ;
+               dispose(point);
+             end;
+             MaxDimC:=Partition^.DimPartition;
+           end;
+           dec(MinPriorityNum);
+         end;
+         AllocFont;
+       end;
+       AllocPartition:=true;
+     end;
+
+
+   procedure CompactBuffer;
+     begin
+     end;
+
+
+{ **************************************************************}
+{ Procedure e funzioni per la gestione dei font di Windows(TM). }
+{ **************************************************************}
+
+   procedure LoadFontPas(FileName:string; var font:PWinFont);
+     var buf:PChar;
+     begin
+       GetMem(buf,length(FileName)+1);
+       StrPCopy(buf,FileName);
+       LoadFont(buf,font);
+       FreeMem(buf,length(FileName)+1);
+     end;
+
+
+   procedure LoadFont(FileName:PChar; var font:PWinFont);
+     var fnt:file;
+         dimF:longint;
+         ris:word;
+     begin
+       if __ResetFile(fnt,FileName,1)<>0 then begin
+         RestoreCRTMode;
+         writeln('Errore FONTS.TPU: Errore nel caricamento del font ',FileName);
+         font:=nil;
+         HaltApplication(LastIOResult);
+       end;
+
+       dimF:=FileSize(fnt);
+       if not AllocPartition(font,DimF) then begin
+         close(fnt);
+         exit;
+       end;
+       {$I-}
+       blockread(fnt,font^,dimF,ris);
+       {$I+}
+       LastIOResult:=IOResult;
+       if (ris<>dimF) or (LastIOResult<>0) then begin
+         RestoreCRTMode;
+         writeln('Errore FONTS.TPU: Errore nel caricamento del font ',FileName);
+         writeln('Bytes da leggere = ',dimF:5);
+         writeln('Bytes letti      = ',ris:5);
+         writeln('I/O Error #',LastIOResult);
+         FreeMem(font,dimF);
+         font:=nil;
+         halt(LastIOResult);
+       end;
+       close(fnt);
+       if (PWord(font)^<>$0200) and (PWord(font)^<>$0300) then begin
+         RestoreCRTMode;
+         writeln('Errore FONTS.TPU: Versione ',PWord(font)^,' del font ',FileName,' sconosciuta.');
+         FreeMem(font,dimF);
+         font:=nil;
+         halt(1);
+       end
+       else if PFontHeader(font)^.Weight=400 then
+         PFontHeader(font)^.Attributes.Bold:=0
+       else
+         PFontHeader(font)^.Attributes.Bold:=1;
+     end;
+
+
+   procedure DestroyFont(var font:PWinFont);
+     begin
+       if font=nil then exit;
+       DeallocPartition(font);
+     end;
+
+
+{ **************************************************************}
+{ Procedure per il disegno dei font di Windows(TM).             }
+{ **************************************************************}
+
+
+{$DEFINE versione_1}
+
+{$IFDEF versione_1}
+   procedure DrawCharVideoDC(x,             y:integer;
+                             Width,         Height:word;
+                             outLeft,       validRight,
+                             outUp,         validDown:word;
+                             adjustFBPos,   adjustShift:byte;
+                             color:byte;
+                             index:pointer);
+   external;
+   {$L DrawChVD.obj}
+{$ENDIF}
+
+
+{$IFDEF versione_2}
+   procedure DrawCharVideoDC(x,             y:integer;
+                             Width,         Height:word;
+                             outLeft,       validRight,
+                             outUp,         validDown:word;
+                             adjustFBPos,   adjustShift:byte;
+                             index:pointer);
+   external;
+   procedure Imposta_Registri(WriteMode,color:byte);  external;
+   procedure Ripristina_Registri;  external;
+
+   {$L DrawCh_2.obj}
+{$ENDIF}
+
+{$IFDEF versione_21}
+   procedure DrawCharVideoDC(x:integer;     a_pos_x1:word;
+                             Width,         Height:word;
+                             outLeft,       validRight,
+                             outUp,         validDown:word;
+                             adjustFBPos,   adjustShift:byte;
+                             index:pointer);
+   external;
+   procedure Imposta_Registri(WriteMode,color:byte);  external;
+   procedure Ripristina_Registri;  external;
+
+   {$L DrwCh_21.obj}
+{$ENDIF}
+
+
+   procedure DrawCharBW(x,             y:integer;
+                        Width,         Height:word;
+                        outLeft,       validRight,
+                        outUp,         validDown:word;
+                        adjustFBPos,   adjustShift:byte;
+                        color:byte;
+                        index:pointer);
+   external;
+   {$L DrawChBW.obj}
+
+
+(* MOMENTANEAMENTE INUTILIZZABILE *
+
+   procedure DrawChar(var ToDC:HCA;
+                      x,             y:integer;
+                      Width,         Height:word;
+                      outLeft,       validRight,
+                      outUp,         validDown:word;
+                      adjustFBPos,   adjustShift:byte;
+                      color:byte;
+                      index:pointer);
+   external;
+   {$L DrawCh.obj}
+*)
+
+   procedure GetMem(var P: Pointer; Size: Word);
+     begin
+       system.GetMem(P,Size);
+     end;
+
+
+   function ItalicChar(source:pointer; SWidth, SHeight:word;
+                       var italic:pointer; var NewWidth:word):word;
+   external;
+   {$L Ch_Cors.obj}
+
+
+
+{$R-}
+   procedure DrawText(x,y:integer;
+                      font:PWinFont;
+                      color:word;
+                      {AlignText:TAlignText;}
+                      text:string);
+     var _x_,_y_,precX,precY:integer;
+         Width,Width8,Height:word;
+         VetPoint:TPointer;
+         point:pointer;
+         First,Last:byte;
+         PointerChar:longint;
+         indexChar:byte;
+         Character:byte;
+         view:ViewPortType;
+         outLeft,
+         validRight,
+         outUp,
+         validDown:word;
+         adjustFBPos:byte;
+         adjustShift:byte;
+
+     {$IFDEF versione_21}
+         a_pos_x1: word;
+     {$ENDIF}
+
+
+     begin
+       if font=nil then exit;
+
+     {$IFDEF versione_2}
+       Imposta_Registri(wmNormal,byte(color));
+     {$ENDIF}
+
+     {$IFDEF versione_21}
+       Imposta_Registri(wmNormal,byte(color));
+     {$ENDIF}
+
+       GetViewSettings(view);
+       _x_:=x+view.x1;
+       _y_:=y+view.y1;
+       with view do if not clip then begin
+         x1:=0;
+         y1:=0;
+         x2:=_MaxXResolution;
+         y2:=_MaxYResolution;
+       end;
+       First:=Font^.Header.First;
+       Last:=Font^.Header.Last;
+       Height:=Font^.Header.Height;
+       VetPoint:=TPointer(font);
+       if Font^.Source[1]=2 then inc(VetPoint.offset,StartIndexVet_200);
+       if Font^.Source[1]=3 then inc(VetPoint.offset,StartIndexVet_300);
+       for Character:=1 to byte(text[0]) do begin
+         if (byte(text[Character]) in [First..Last]) then begin
+           if (_y_<view.y2)  and
+              (_y_+Height>view.y1)
+           then begin
+             indexChar:=byte(text[Character])-first;
+             if Font^.Source[1]=2 then begin
+               Width      :=PFontIndexVet_200(VetPoint)^[indexChar].CharWidth;
+               PointerChar:=PFontIndexVet_200(VetPoint)^[indexChar].CharIndex;
+             end
+             else if Font^.Source[1]=3 then begin
+               Width      :=PFontIndexVet_300(VetPoint)^[indexChar].CharWidth;
+               PointerChar:=PFontIndexVet_300(VetPoint)^[indexChar].CharIndex;
+             end;
+             if width=0 then continue;
+             if (_x_<view.x2)  and
+                (_x_+Width>view.x1)
+             then begin
+               precX:=_x_;
+               precY:=_y_;
+               if _x_+Width>view.x2 then validRight:=view.x2-_x_+1
+                                    else validRight:=Width;
+               if _x_<view.x1 then outLeft:=view.x1-_x_
+                              else outLeft:=$FFFF;
+
+             {$IFDEF versione_21}
+               if _y_+Height>view.y2 then validDown:=Height-view.y2+_y_-1
+                                     else validDown:=0;
+             {$ELSE}
+               if _y_+Height>view.y2 then validDown:=view.y2-_y_+1
+                                     else validDown:=$FFFF;
+             {$ENDIF}
+
+               if _y_<view.y1 then begin
+                 outUp:=view.y1-_y_;
+                 _y_:=view.y1;
+               end
+               else outUp:=$FFFF;
+               point:=@Font^.Source[PointerChar];
+               if _x_<0 then begin
+                 adjustShift:=8-(-_x_ mod 8);
+                 adjustFBPos:=((-_x_+7) div 8)-1;
+                 _x_:=0;
+               end
+               else begin
+                 adjustShift:=0;
+                 adjustFBPos:=0;
+               end;
+
+            {$IFDEF versione_1}
+               DrawCharVideoDC(  _x_,          _y_,
+                                 Width,        Height,
+                                 outLeft,      validRight,
+                                 outUp,        validDown,
+                                 adjustFBPos,  adjustShift,   color, point);
+            {$ENDIF}
+
+            {$IFDEF versione_2}
+               DrawCharVideoDC(  _x_,          _y_,
+                                 Width,        Height,
+                                 outLeft,      validRight,
+                                 outUp,        validDown,
+                                 adjustFBPos,  adjustShift,   point);
+            {$ENDIF}
+
+            {$IFDEF versione_21}
+               a_pos_x1:=(_x_ div 8)+(MaxXResolution div 8)*_y_;
+               DrawCharVideoDC(  _x_,          a_pos_x1,
+                                 Width,        Height,
+                                 outLeft,      validRight,
+                                 outUp,        validDown,
+                                 adjustFBPos,  adjustShift,   point);
+            {readkey;}
+            {$ENDIF}
+
+               _x_:=precX;
+               _y_:=precY;
+             end;
+           end;
+           inc(_x_,Width);
+         end;
+         case text[Character] of
+         #13: inc(_y_,PFontHeader(font)^.Ext_Leading+Height);
+         #10: _x_:=x+view.x1;
+         end;
+       end;
+
+     {$IFDEF versione_2}
+       Ripristina_Registri;
+     {$ENDIF}
+
+     {$IFDEF versione_21}
+       Ripristina_Registri;
+     {$ENDIF}
+
+     end;
+{$R+}
+
+
+{ **************************************************************}
+{ **************************************************************}
+
+
+{$F+}
+   procedure FontExitProc;
+     begin
+       if PrecExitProc<>nil then TProc(PrecExitProc);
+       ClearFontBuffer;
+       if (BufferPtr<>nil) and BufferInHeap then FreeMem(BufferPtr,DimBuffer);
+     end;
+{$F-}
+
+
+
+
+begin
+  _system_.Init;
+  _serif8_.Init;
+  _serif10_.Init;
+  cour.Init;
+  symbole4.Init;
+  symbole6.Init;
+  serife83.Init;
+
+  _system_.LoadFontFrom(Work_Directory+'vgasys.fnt');
+  _serif8_.LoadFontFrom(Work_Directory+'sserife.fnt');
+  _serif10_.LoadFontFrom(Work_Directory+'sserife.fnt');
+  cour.LoadFontFrom(Work_Directory+'cour90.fnt');
+  symbole4.LoadFontFrom(Work_Directory+'serife.fnt');
+  symbole6.LoadFontFrom(Work_Directory+'serife.fnt');
+  serife83.LoadFontFrom(Work_Directory+'serife.fnt');
+
+  PrecExitProc:=GraphExitProc;
+  GraphExitProc:=@FontExitProc;
+  BufferPtr:=nil;
+  BufferPartitions:=nil;
+  MaxPartitionPtr:=nil;
+  MaxDimContiguos:=0;
+end.

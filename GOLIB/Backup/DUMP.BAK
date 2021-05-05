@@ -1,0 +1,29 @@
+Micro Dump 1.0  (c) Ernesto Cianciotta Productions 1996
+
+
+Breve guida all'utilizzo di Micro Dump 1.0
+------------------------------------------
+
+
+Per poter effettuare il dump di un file si deve usare la seguente sintassi
+alla riga di comando del DOS:
+
+  dump [path]<file name>
+
+
+Una volta partito il dump Š possibile utilizzare il mouse per selezionare
+le linee del file.
+Con il TASTO SINISTRO DEL MOUSE si selezionano le linee del file, mentre
+con il TASTO DESTRO si pu• effettuare uno zoom sulla linea selezionata.
+
+I TASTI FRECCIA in su e in gi— servono per effettuare lo scrolling una riga
+alla volta, mentre i TASTI PAGE UP e PAGE DOWN per scrollare una pagina alla
+volta.
+
+Premendo il TASTO INVIO Š possibile modificare tutti gli otto caratteri che
+compongono la linea selezionata.
+
+Il TASTO S serve per poter salvare il file dopo una modifica effettuata
+premendo il tasto INVIO.
+
+

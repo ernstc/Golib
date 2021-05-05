@@ -1,0 +1,190 @@
+{ (c) Ernesto CIANCIOTTA Productions 1996 }
+
+{$I DIRECTIV.INC     Direttive di compilazione}
+
+
+{ Modulo per la crezione e la lettura di files di risorsa
+  in formato GLBr 1.0 che il formato binario di risorsa per GOLIB 1.0}
+
+UNIT GLBr_SDK;
+
+INTERFACE
+
+
+type
+      TGLBrHeader = packed array[1..9] of char;
+
+const
+      GLBr_header: TGLBrHeader =
+        ('R','E','S',' ','f','i','l','e',#26);
+
+
+      ConfMOVABLE  = $0001;
+      ConfPERSONAL = $0002;
+
+
+type
+      TIDXElement = record
+         ID, index: longint;
+      end;
+
+
+      PIDXTable = ^TIDXTable;
+      TIDXTable = array [1..5] of TIDXElement;
+
+
+      PCursorRes = ^TCursorRes;
+      TCursorRes = record
+         bin: array[1..32] of word;
+         hotX,
+         hotY: integer;
+      end;
+
+
+      PHotSpotRes = ^THotSpotRes;
+      THotSpotRes = record
+         x1, y1,
+         x2, y2: integer;
+         IDCursor:word;
+         Message: word;
+      end;
+
+
+      PPackage = ^TPackage;
+      TPackage = record
+         n: word; {numero degli hot spots del package}
+         hot: array[1..1] of THotSpotRes;
+      end;
+
+
+      PResource = ^TResource;
+      TResource = record
+         Attr:word;
+         case ResType: word of    { = 0001/0002 }
+         0001: ( package: TPackage;
+                );
+         0002: ( cur: TCursorRes);
+      end;
+
+
+
+      { Carica un file GLBr nella regione riservata alle risorse e convalida
+        il file. Se il file non Š valido, allora restituisce NIL. }
+      procedure LoadGLBr(FileName:string; var pos:pointer);
+
+      { Questa funzione restituisce il puntatore della risorsa con l'identificatore
+        specificato. La ricerca viene effettuata in "Res" che specifica l'indirizzo
+        in cui sono state caricate le risorse in formato GLBr. }
+      function GetRes(ID:word; var Res):PResource;
+
+      function GetResourceSize(res:PResource):word;
+
+
+
+IMPLEMENTATION
+
+uses
+      utility,
+      openfile;
+
+
+type
+      { N.B.:
+
+        Il seguente tipo deve contenere tutti i campi di TResource che
+        non fanno parte del case. Serve per conoscere la dimensione di
+        tali campi.
+      }
+      TResourceInfo = record
+         Attr   : word;
+         ResType: word;
+      end;
+
+
+      PFileGLBr = ^TFileGLBr;
+      TFileGLBr = record
+         header: TGLBrHeader;
+         ver:  word;
+         NRes: longint;
+         idx:  TIDXTable;
+      end;
+
+
+      TPointer = record
+         offset,
+         segment:word;
+      end;
+
+
+      procedure LoadGLBr(FileName:string; var pos:pointer);
+        var f:file;
+            header:TGLBrHeader;
+            ris:word;
+        begin
+          if ResetFile(f,FileName,1)<>0 then HaltApplication(LastIOResult);
+          { Verifica che il file sia del formato GLBr }
+          blockread(f,header,sizeof(TGLBrHeader),ris);
+          if (header<>GLBr_header) or (ris<>sizeof(TGLBrHeader)) then begin
+            writeln('Il file specificato non Š nel formato GLBr 1.0 !'#10#13);
+            close(f);
+            halt(3);
+          end;
+        end;
+
+
+      { Questa funzione si basa su un algoritmo di ricerca binaria. }
+      function GetRes(ID:word; var Res):PResource;
+        var __res:TFileGLBr absolute Res;
+            i:word;
+            p:TPointer;
+            punt:PResource absolute p;
+            l,r,x:longint;
+            copy:PResource;
+            res_size:word;
+
+        begin
+          pointer(p):=nil;
+          { Ricerca binaria nella tabella d'accesso }
+          l:=1; r:=__res.NRes;
+          while r>=l do begin
+            x:=(l+r) div 2;
+            if ID = __res.idx[x].ID then break;
+            if ID < __res.idx[x].ID then r:=x-1
+                                    else l:=x+1;
+          end;
+          if l<=r then begin
+            { "x" contiene l'indice della risorsa nella tabella d'accesso }
+            { Determina la posizione in memoria della risorsa cercata }
+            p.offset:=__res.idx[x].index+ofs(Res);
+            p.segment:=seg(Res);
+          end;
+          if punt<>nil then begin
+            if (punt^.Attr and ConfPERSONAL)<>0 then begin
+              { Se la risorsa ha l'attributo PERSONAL allora crea una copia
+                e restituisce un puntatore alla copia }
+              res_size:=GetResourceSize(punt);
+              GetMem(copy,res_size);
+              BlockCopy(punt^,copy^,res_size);
+              punt:=copy;
+            end;
+          end;
+          GetRes:=punt;
+        end;
+
+
+      function GetResourceSize(res:PResource):word;
+        begin
+          if res=nil then begin
+            GetResourceSize:=0;
+            exit;
+          end;
+          case res^.ResType of
+          0001: GetResourceSize:=sizeof(TResourceInfo)+sizeof(TCursorRes);
+          0002: GetResourceSize:=sizeof(TResourceInfo)+2+
+                                 sizeof(THotSpotRes)*res^.package.n;
+          else GetResourceSize:=0;
+          end;
+        end;
+
+
+END.

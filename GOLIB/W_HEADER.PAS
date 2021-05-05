@@ -1,0 +1,616 @@
+{ (c) Ernesto CIANCIOTTA Productions 1996 }
+
+{$I DIRECTIV.INC     Direttive di compilazione}
+
+
+
+{****************************************************}
+{*                                                  *}
+{*  Modulo della libreria GOLIB contenete           *}
+{*  delle intestazioni di default per le finestre   *}
+{*  discendenti di OTWindow.                        *}
+{*                                                  *}
+{*  Sritto con Turbo Pascal ver. 7.0.               *}
+{*                                                  *}
+{****************************************************}
+
+{$R-}
+
+UNIT W_Header;
+
+INTERFACE
+
+  uses
+       strings,
+       mouse,
+       codici,
+       graph,
+       graftool,
+       fonts,
+       golib_h,
+       Glbr_sdk,
+       applic,
+       resman,
+       bitmaps,
+       golibcod,
+       golib9,
+         dispfile,
+       bitmap,
+       buttons;
+
+
+  type
+
+       OPWinHeader = ^OTWinHeader;
+       OTWinHeader = object (OTView)
+          procedure ExecMessage(var Message:TMessage); virtual;
+          { Un esecutore di messaggi per• su un canale non automatico, ossia
+            non pu• essere chiamato dall'application controller. }
+          procedure MakeSomething(var Message:TMessage); virtual;
+          { Restituisce una stringa lunga tanti caratteri quanti sono gli
+            oggetti e ogni carattere indica il lato sul quale l'oggetto
+            corrispondente Š vincolato.
+            'N' = lato nord;
+            'S' = lato sud;
+            'W' = lato ovest;
+            'E' = lato est;
+            'X' = nessun lato.
+          }
+          function GetEdges:PChar; virtual;
+          function GetWindowName:PChar; virtual;
+       end;
+
+
+       { AutoText personalizzato per l'intestazione }
+       OPWHAutoText = ^OTWHAutoText;
+       OTWHAutoText = object (OTAutoText)
+          procedure ExecMessage(var Message:TMessage); virtual;
+       end;
+
+
+       { Barra personalizzata per l'intestazione }
+       OPWHBar = ^OTWHBar;
+       OTWHBar = object (OTBar)
+          procedure ExecMessage(var Message:TMessage); virtual;
+       end;
+
+
+       OPWinEdges = ^OTWinEdges;
+       OTWinEdges = object (OTView)
+          constructor Init;
+          procedure Disegna; virtual;
+       end;
+
+
+       OPNormalHeader = ^OTNormalHeader;
+       OTNormalHeader = object (OTWinHeader)
+          constructor Init(WinName: PChar);
+          procedure Adjust; virtual;
+          procedure Select; virtual;
+          procedure Deselect; virtual;
+          procedure ChangeWinName(NewName: PChar);
+          function GetEdges:PChar; virtual;
+          function GetWindowName:PChar; virtual;
+          procedure MakeSomething(var Message:TMessage); virtual;
+       private
+          text: OPWHAutoText;
+          rect: OPWHBar;
+       end;
+
+
+       OPCloseHeader = ^OTCloseHeader;
+       OTCloseHeader = object (OTNormalHeader)
+          constructor Init(WinName: PChar; close: boolean);
+          procedure Adjust; virtual;
+          function GetEdges:PChar; virtual;
+          procedure MakeSomething(var Message:TMessage); virtual;
+       private
+          CloseButton:OPCloseButton;
+       end;
+
+
+       { Con questa intestazione, l'icona per il dimesionamento della finestra
+         non Š vincolata al nessun lato. }
+       OPFullHeader = ^OTFullHeader;
+       OTFullHeader = object (OTCloseHeader)
+          constructor Init(WinName: PChar; close, reduce, zoom: boolean);
+          procedure Adjust; virtual;
+          function GetEdges:PChar; virtual;
+          procedure MakeSomething(var Message:TMessage); virtual;
+       private
+          ZoomButton:   OPButton;
+          ReduceButton: OPButton;
+          DimButton:    OPBitmap;
+          WinEdges:     OPWinEdges;
+       end;
+
+
+       { Con questa intestazione, l'icona per il dimesionamento della finestra
+         Š vincolata al lato inferiore della finestra stessa. }
+       OPFullHeader2 = ^OTFullHeader2;
+       OTFullHeader2 = object (OTFullHeader)
+          function GetEdges:PChar; virtual;
+       end;
+
+
+       OPHelpHeader = ^OTHelpHeader;
+       OTHelpHeader = object (OTCloseHeader)
+          constructor Init(WinName: PChar; close, help:boolean);
+          procedure Adjust; virtual;
+          function GetEdges:PChar; virtual;
+       private
+          HelpButton:   OPButton;
+       end;
+
+
+IMPLEMENTATION
+
+uses
+     frame2;
+
+
+var ResizeIconHCA:HCA;
+
+
+   procedure ExecM(self:OPView; var Message:TMessage);
+     var Msg:TMessage;
+         m:word;
+     begin
+       case Message.Message of
+       EvMOUSE_L_PRESSED:
+          m:=_MUOVI_OGGETTO_;
+       EvMOUSE_L_MULTIPRESSED:
+          m:=HEADER_DOUBLECLICK;
+       else m:=Null_ID;
+       end;
+       if m<>Null_ID then begin
+         Msg:=Message;
+         Msg.HNDL:=self^.ID;
+         Msg.Message:=m;
+         self^.SendMessage(Msg);
+       end;
+     end;
+
+
+
+                     {----- OTWHAutoText -----}
+   procedure OTWHAutoText.ExecMessage(var Message:TMessage);
+     begin
+       ExecM(@self,Message);
+     end;
+
+
+                      {----- OTWHBar -----}
+   procedure OTWHBar.ExecMessage(var Message:TMessage);
+     begin
+       ExecM(@self,Message);
+     end;
+
+
+
+                     {----- OTWinEdges -----}
+   constructor OTWinEdges.Init;
+     begin
+       inherited Init(Null_ID,NullRect);
+       SysConfig:=SysConfig and not cfVisible
+                            or cfTrasparent;
+       AssignResource(11);
+       { Se non Š possibile trovare una risorsa package con 8 hotspots, allora
+         viene deallocato l'oggeto }
+       if (ResourcePtr=nil) or
+          (ResourcePtr^.ResType<>0001) or
+          (ResourcePtr^.package.n<>12)
+       then fail;
+     end;
+
+
+   procedure OTWinEdges.Disegna;
+     begin
+     end;
+
+
+                      {----- OTWinHeader -----}
+   procedure OTWinHeader.ExecMessage;
+     begin
+     end;
+
+
+   procedure OTWinHeader.MakeSomething;
+     begin
+     end;
+
+
+   function OTWinHeader.GetEdges:PChar;
+     begin
+       GetEdges:=nil;
+     end;
+
+
+   function OTWinHeader.GetWindowName:PChar;
+     begin
+       GetWindowName:=nil;
+     end;
+
+
+                      {----- OTNormalHeader -----}
+   constructor OTNormalHeader.Init(WinName: PChar);
+     begin
+       if not inherited Init(Null_ID,NullRect) then fail;
+
+       SysConfig:=SysConfig or cfCompactable;
+
+       new(rect, Init(_MUOVI_OGGETTO_,NullRect,1,4));
+       new(text, __Init(_MUOVI_OGGETTO_,NullRect,IntestFont,WinName,1,4,15));
+       { coolegamento con il padre }
+       rect^._Father_:=@Self;
+       text^._Father_:=@Self;
+       { collegamenti }
+       text^.LinkTo(rect);
+       _gruppo_:=text;
+       _last_:=rect;
+     end;
+
+
+   procedure OTNormalHeader.Adjust;
+     var h:word;
+     begin
+       h:=IntestFont^.GetHeight;
+       with R do begin
+         {rect^.R.assign(Spessore_Bordo+3+x1,Spessore_Bordo+3+y1,
+                        x2-3-Spessore_Bordo,5+h+y1+Spessore_Bordo);
+         text^.R.assign(Spessore_Bordo+8+x1,Spessore_Bordo+4+y1,
+                        x2-8-Spessore_Bordo,5+h+y1+Spessore_Bordo);
+         }rect^.R.assign(3+x1,3+y1,x2-3,5+h+y1);
+         text^.R.assign(8+x1,4+y1,x2-8,5+h+y1);
+         text^.Adjust;
+       end;
+     end;
+
+
+   procedure OTNormalHeader.Select;
+     var p:pointer;
+         sm:TSortMethod;
+     begin
+       { Modifica gli attributi del testo che compone l'intestazione }
+       text^.SetTextProperties(IntestFont,15);
+     {$IFDEF oldrefresh}
+       text^.SetFont(@_system_);
+       text^.SetStyle(1,HeaderSelectedColor);
+     {$ENDIF}
+       { Modifica gli attributi della barra dell'intestazione }
+       rect^.SetStyle(1,HeaderSelectedColor);
+       if lookVideo then begin
+         p:=_last_;
+         _last_:=nil;
+         sm:=RectSortMethod;
+         RectSortMethod:=TLBR;
+         HideMouseCursor;
+         RefreshRect(NullRect,_gruppo_,GetVisibleZone(@Self,@rect^.r,NullObj));
+         ShowMouseCursor;
+         RectSortMethod:=sm;
+         _last_:=p;
+       end;
+     end;
+
+
+   procedure OTNormalHeader.Deselect;
+     var p:pointer;
+         sm:TSortMethod;
+     begin
+       { Modifica gli attributi del testo che compone l'intestazione }
+       text^.SetTextProperties(IntestFont,8);
+     {$IFDEF oldrefresh}
+       text^.SetFont(@_system_);
+       text^.SetStyle(1,HeaderDeselectedColor);
+     {$ENDIF}
+       { Modifica gli attributi della barra dell'intestazione }
+       rect^.SetStyle(1,HeaderDeselectedColor);
+       if lookVideo then begin
+         p:=_last_;
+         _last_:=nil;
+         sm:=RectSortMethod;
+         RectSortMethod:=TLBR;
+         HideMouseCursor;
+         RefreshRect(NullRect,_gruppo_,GetVisibleZone(@Self,@rect^.r,NullObj));
+         ShowMouseCursor;
+         RectSortMethod:=sm;
+         _last_:=p;
+       end;
+     end;
+
+
+   procedure OTNormalHeader.ChangeWinName(NewName: PChar);
+     begin
+       text^.ChangeText(NewName);
+     end;
+
+
+   function OTNormalHeader.GetEdges:PChar;
+     begin
+       GetEdges:=StrNewPas('NN');
+     end;
+
+
+   function OTNormalHeader.GetWindowName:PChar;
+     var t:PChar;
+         p1:pointer;
+         p2:word;
+     begin
+       text^.GetTextInfo(t,p1,p2);
+       GetWindowName:=t;
+     end;
+
+
+   procedure OTNormalHeader.MakeSomething;
+     begin
+       case Message.Message of
+       _CHANGE_WIN_NAME_: begin
+           ChangeWinName(PChar(Message.ParametersPtr1));
+         end;
+       end;
+     end;
+
+
+                      {----- OTCloseHeader -----}
+   constructor OTCloseHeader.Init(WinName: PChar; close: boolean);
+     begin
+       if not inherited Init(WinName) then fail;
+       new(CloseButton, Init(0,0,close));
+       CloseButton^._Father_:=@Self;
+       CloseButton^.LinkTo(text);
+       _gruppo_:=CloseButton;
+     end;
+
+
+   procedure OTCloseHeader.Adjust;
+     var h:word;
+     begin
+       h:=IntestFont^.GetHeight;
+       with R do begin
+         {rect^.R.assign(Spessore_Bordo+21+3+x1,Spessore_Bordo+3+y1,
+                        x2-3-Spessore_Bordo,5+h+y1+Spessore_Bordo);
+         text^.R.assign(Spessore_Bordo+29+8+x1,Spessore_Bordo+4+y1,
+                        x2-25-19-5-Spessore_Bordo,5+h+y1+Spessore_Bordo);
+         }rect^.R.assign(21+3+x1,3+y1,x2-3,5+h+y1);
+         text^.R.assign(29+x1,4+y1,x2-25-19-5,5+h+y1);
+         text^.Adjust;
+         CloseButton^.R.SetRect(3+x1,3+y1,19,18);
+       end;
+     end;
+
+
+   function OTCloseHeader.GetEdges:PChar;
+     begin
+       GetEdges:=StrNewPas('NNN');
+     end;
+
+
+   procedure OTCloseHeader.MakeSomething;
+     begin
+       inherited MakeSomething(Message);
+       case Message.Message of
+       _CHIUDI_FINESTRA_: begin
+           if MakeSpecialEffect then begin
+             NumeroPassi:=20;
+             SpecialEffect(r,CloseButton^.R);
+             SpecialEffect(r,CloseButton^.R);
+           end;
+         end;
+       end;
+     end;
+
+
+                      {----- OTFullHeader -----}
+   constructor OTFullHeader.Init(WinName: PChar; close, reduce, zoom: boolean);
+     begin
+       if not inherited Init(WinName,close) then fail;
+       new(WinEdges,     Init);
+       new(ReduceButton, RegisterAll(_RIDUCI_FINESTRA_,0,0,reduce,@ReduceBTN));
+       new(ZoomButton,   RegisterAll(_ZOOM_FINESTRA_,0,0,zoom,@ZoomBTN));
+       new(DimButton,    RegisterHCA(EvWinDimSOUTHEAST,0,0,ResizeIconHCA));
+       { collegamento degli oggetti con il padre }
+       ReduceButton^._Father_:=@Self;
+       ZoomButton^._Father_:=@Self;
+       DimButton^._Father_:=@Self;
+       WinEdges^._Father_:=@Self;
+       { concatenamento degli oggetti alla lista }
+       ReduceButton^.LinkTo(ZoomButton);
+       ZoomButton^.LinkTo(DimButton);
+       DimButton^.LinkTo(CloseButton);
+       { Se non Š possibile creare WinEdges, allora non lo si inserisce nella
+         lista }
+       if WinEdges<>nil then begin
+         WinEdges^.LinkTo(ReduceButton);
+         _gruppo_:=WinEdges;
+       end
+       else _gruppo_:=ReduceButton;
+       { impostazione di rect e text }
+       with rect^ do MouseReactionMask:=MouseReactionMask or rcLMultiPressed;
+       with text^ do MouseReactionMask:=MouseReactionMask or rcLMultiPressed;
+       DimButton^.AssignResource(4); { Cursore Sud Est }
+     end;
+
+
+   procedure OTFullHeader.Adjust;
+     var i,h,l_ang:word;
+     begin
+       inherited Adjust;
+       h:=IntestFont^.GetHeight;
+       with R do begin
+         { Aggiusta la posizione dei bottoni }
+         ZoomButton^.R.SetRect(x2-5-19,y1+5,19,14);
+         ReduceButton^.R.SetRect(x2-25-19,y1+5,19,14);
+         DimButton^.R.SetRect(x2-4-15,y2-4-15,15,15);
+       end;
+       { Aggiusta gli hot spots del bordo della finestra }
+       if WinEdges<>nil then begin
+         WinEdges^.R:=R;
+         l_ang:=Spessore_Bordo*4;
+         with WinEdges^.ResourcePtr^.package do begin
+           i:=1; { Lato nord }
+           with hot[i] do begin
+             x1:=l_ang+1;                  y1:=0;
+             x2:=R.DimX-l_ang-1;           y2:=Spessore_Bordo;
+           end;
+           i:=2; { Angolo nord est 1ø}
+           with hot[i] do begin
+             x1:=R.DimX-l_ang;             y1:=0;
+             x2:=R.DimX;                   y2:=Spessore_Bordo;
+           end;
+           i:=3; { Angolo nord est 2ø}
+           with hot[i] do begin
+             x1:=R.DimX-Spessore_Bordo;    y1:=0;
+             x2:=R.DimX;                   y2:=l_ang;
+           end;
+           i:=4; { Lato est }
+           with hot[i] do begin
+             x1:=R.DimX-Spessore_Bordo;    y1:=l_ang+1;
+             x2:=R.DimX;                   y2:=R.DimY-l_ang-1;
+           end;
+           i:=5; { Angolo sud est 1ø}
+           with hot[i] do begin
+             x1:=R.DimX-Spessore_Bordo;    y1:=R.DimY-l_ang;
+             x2:=R.DimX;                   y2:=R.DimY;
+           end;
+           i:=6; { Angolo sud est 2ø}
+           with hot[i] do begin
+             x1:=R.DimX-l_ang;             y1:=R.DimY-Spessore_Bordo;
+             x2:=R.DimX;                   y2:=R.DimY;
+           end;
+           i:=7; { Lato sud }
+           with hot[i] do begin
+             x1:=l_ang+1;                  y1:=R.DimY-Spessore_Bordo;
+             x2:=R.DimX-l_ang-1;           y2:=R.DimY;
+           end;
+           i:=8; { Angolo sud ovest 1ø}
+           with hot[i] do begin
+             x1:=0;                        y1:=R.DimY-Spessore_Bordo;
+             x2:=l_ang;                    y2:=R.DimY;
+           end;
+           i:=9; { Angolo sud ovest 2ø}
+           with hot[i] do begin
+             x1:=0;                        y1:=R.DimY-l_ang;
+             x2:=Spessore_Bordo;           y2:=R.DimY;
+           end;
+           i:=10; { Lato ovest }
+           with hot[i] do begin
+             x1:=0;                        y1:=l_ang+1;
+             x2:=Spessore_Bordo;           y2:=R.DimY-l_ang-1;
+           end;
+           i:=11; { Angolo nord ovest 1ø}
+           with hot[i] do begin
+             x1:=0;                        y1:=0;
+             x2:=Spessore_Bordo;           y2:=l_ang;
+           end;
+           i:=12; { Angolo nord ovest 2ø}
+           with hot[i] do begin
+             x1:=0;                        y1:=0;
+             x2:=l_ang;                    y2:=Spessore_Bordo;
+           end;
+         end;
+       end;
+     end;
+
+
+   function OTFullHeader.GetEdges:PChar;
+     begin
+       GetEdges:=StrNewPas('XNNXNNN');
+     end;
+
+
+   procedure OTFullHeader.MakeSomething;
+     var lk:boolean;
+     begin
+       inherited MakeSomething(Message);
+       case Message.Message of
+       _ZOOM_FINESTRA_: begin
+           if motion then NumeroPassi:=10
+                     else NumeroPassi:=20;
+           if MakeSpecialEffect then begin
+             { Effetto speciale }
+             SpecialEffect(ZoomButton^.r,fullRect);
+             SpecialEffect(ZoomButton^.r,fullRect);
+           end;
+           lk:=lookvideo;
+           lookvideo:=false;
+           ZoomButton^.PerformButton(@UnzoomBTN);
+           lookvideo:=lk;
+           with text^ do MouseReactionMask:=MouseReactionMask and not rcLPressed;
+           with rect^ do MouseReactionMask:=MouseReactionMask and not rcLPressed;
+           ZoomButton^.ID:=_UNZOOM_FINESTRA_;
+           with DimButton^ do SysConfig:=SysConfig and not cfVisible;
+         end;
+       _UNZOOM_FINESTRA_: begin
+           if motion then NumeroPassi:=10
+                     else NumeroPassi:=20;
+           if MakeSpecialEffect then begin
+             { Effetto speciale }
+             SpecialEffect(fullRect,ZoomButton^.r);
+             SpecialEffect(fullRect,ZoomButton^.r);
+           end;
+           ZoomButton^.PerformButton(@ZoomBTN);
+           with text^ do MouseReactionMask:=MouseReactionMask or rcLPressed;
+           with rect^ do MouseReactionMask:=MouseReactionMask or rcLPressed;
+           ZoomButton^.ID:=_ZOOM_FINESTRA_;
+           with DimButton^ do begin
+             SysConfig:=SysConfig or cfVisible;
+             Refresh;
+           end;
+         end;
+       end;
+     end;
+
+
+                      {----- OTFullHeader2 -----}
+   function OTFullHeader2.GetEdges:PChar;
+     begin
+       GetEdges:=StrNewPas('XNNSNNN');
+     end;
+
+
+                      {----- OTHelpHeader -----}
+   constructor OTHelpHeader.Init(WinName: PChar; close, help: boolean);
+     begin
+       if not inherited Init(WinName,close) then fail;
+       new(HelpButton,  RegisterAll(_HELP_,0,0,help,@HelpBTN));
+       { collegamento degli oggetti con il padre }
+       HelpButton^._Father_:=@Self;
+       { concatenamento degli oggetti alla lista }
+       HelpButton^.LinkTo(CloseButton);
+       _gruppo_:=HelpButton;
+     end;
+
+
+   procedure OTHelpHeader.Adjust;
+     var h:word;
+     begin
+       inherited Adjust;
+       h:=IntestFont^.GetHeight;
+       with R do HelpButton^.R.SetRect(x2-5-19,y1+5,19,14);
+     end;
+
+
+   function OTHelpHeader.GetEdges:PChar;
+     begin
+       GetEdges:=StrNewPas('NNNN');
+     end;
+
+
+
+
+
+
+var _bmp_:pointer;
+
+   procedure ErroreRisorse;
+     begin
+       restoreCRTMode;
+       writeln('Errore W_HEADER.TPU: Il caricamento delle risorse Š fallito!');
+       halt;
+     end;
+
+BEGIN
+  if GetBMPResource_IDNum(@Golib_RESOURCES,NumeroRisorse,ResizeIcon,_bmp_)=0 then ErroreRisorse;
+  if CreateCompatibleArea(ResizeIconHCA,_bmp_^)=nil then ErroreRisorse;
+  if _bmp_<>nil then DisposeBMP(_bmp_);
+END.

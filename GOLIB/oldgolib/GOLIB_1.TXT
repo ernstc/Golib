@@ -1,0 +1,48 @@
+GOLIB 1.0
+                                      (c) 1995 Ernesto CIANCIOTTA Productions
+-----------------------------------------------------------------------------
+Parte I
+
+
+
+                  Indice Alfabetico delle informazioni utili.
+                  ___________________________________________
+
+Voce                                                                Paragrafo
+____                                                                _________
+
+
+
+NullRect .................................................................. 1
+
+
+
+
+
+-----------------------------------------------------------------------------
+
+                              Paragrafi
+
+-----------------------------------------------------------------------------
+
+
+
+
+
+  1. NullRect
+
+NullRect Š un oggetto di tipo OTRect che Š impostato di default con i
+seguenti valori : (0,0,0,0,-3000,3000).
+
+E' possibile passare come parametro NullRect quando Š richiesto un rettangolo
+di cui si s… che non verranno considerate le coordinate perchŠ immediatamente
+modificate. Ad esempio se si deve inserire un oggetto bottone in una toolbar
+si potr… semplicamente passare come rettangolo NullRect. In questo caso il
+valore passato non verr… considerato perchŠ la toolbar provvede a reinizzia-
+lizzare tutti i rettangoli degli oggetti che la compongono.
+
+  Esempio:
+
+     (*****)
+
+-----------------------------------------------------------------------------

@@ -1,0 +1,9 @@
+Un oggetto facente parte della root della display-list viene selezionato
+automaticamente (se cfSelectable Š settato) se:
+
+- Š stato cancellato l'oggetto selezionato e l'oggetto in questione
+  Š il primo oggetto selezionabile dopo quello cancellato
+- Š stata esplicitamente richiesta la selezione tramite il metodo Select
+- l'oggetto viene messo sul desktop
+- quando si verifica un evento EvMOUSE_L_PRESSED sull'oggetto e in questo
+  caso la selezione viene chiamata direttamente dall'app. contr.

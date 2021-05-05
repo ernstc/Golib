@@ -1,0 +1,84 @@
+ESECUZIONE DI UN MENU.
+----------------------
+
+- Pressione del tasto sinistro all'interno della menu bar.
+  a) Ricerca voce puntata
+  b) Seleziona voce
+  c) Controlla se c'Š un submenu
+     1) Il submenu esiste e quindi spedisci un messaggio per far creare
+        al systema l'eventuale menu pop-up associato
+     2) Il submenu non esiste
+     3) Annota se Š stato creato un submenu oppure no
+  e) Annota che Š stata attivata la menu bar
+  d) Blocco del controllo dell'app controller sull'area della menu bar
+
+
+- Movimento del mouse
+  a) Controlla se la menu bar Š attiva
+     1) La menu bar Š attiva e il mouse Š sulla menu bar
+        - Ricerca  nuova voce selezionata
+        - Controlla se Š uguale alla precedente
+          a) La nuova voce Š diversa
+             1) Elimina l'eventuale submenu precedente mandando un messaggio
+                al sistema
+             2) Deseleziona la precedente
+             3) Seleziona la nuova voce
+                - Controlla se c'Š un submenu
+                  a) Il submenu esiste
+                     1) Spedisci un messaggio per far creare al systema
+                        l'eventuale menu pop-up associato
+                  b) Il submenu non esiste
+                  c) Annota se Š stato creato un submenu oppure no
+          b) La nuova voce Š uguale alla precedente
+     2) La menu bar Š attiva e il mouse Š sull'area dell'eventuale submenu
+        - Imposta come oggetto puntato
+        - Rispedisci il messaggio ricevuto al menu pop-up
+     3) La menu bar Š attiva e il mouse Š fuori dalla menu bar
+        - Elimina l'eventuale submenu precedente mandando un messaggio
+          al sistema
+        - Deseleziona la voce precedente
+        - Annota che non Š stato creato un submenu
+
+
+
+- Rilascio del tasto sinistro
+  a) Controlla se esiste una voce selezionata
+     1) Esiste una voce selezionata
+        - Deseleziona la voce
+        - Controlla se esiste un submenu
+          a) Il submenu esiste e quindi elimina il submenu mandando un
+             messaggio al sistema
+          b) Il submenu non esiste
+             1) Ricava il messaggio da spedire con il metodo
+                OTView.DistatchMessage del padre
+     2) Non esiste una voce selezionata
+
+
+
+
+
+
+
+
+CREAZIONE DEL MENU POP-UP.
+--------------------------
+- Creazione all'interno dello HEAP dell'oggetto menu pop-up come oggetto
+  appartenente alla ROOT
+- Impostazione del padre a @Self
+- Spedizione messaggio al systema:
+  HNDL          = ID
+  Message       = SYS_CREATE_OBJECT
+  ParametersPtr = puntatore all'oggetto da creare sul desktop
+
+
+
+DISTRUZIONE DEL MENU POP-UP.
+----------------------------
+- Spedizione messaggio al systema:
+  HNDL          = ID
+  Message       = SYS_DELETE_OBJECT
+  ParametersPtr = puntatore all'oggetto da cancellare
+
+
+
+

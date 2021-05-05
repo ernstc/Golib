@@ -1,0 +1,258 @@
+Ultimo aggiornamento tabella, 30/04/1995
+
+
+Moduli di GOLIB 1.0.
+
+N.   Nome unit…       Descrizione
+-----------------------------------------------------------------------------
+0  - MOUSE............Modulo di utilit… per la gestore del mouse che per• non
+                      Š utilizzato dalla libreria GOLIB, ma che pu• essere di
+                      agevolazione per il programmatore.
+
+1  - GRAFTOOL.........Modulo contenete delle primitive grafiche di 2ø livello.
+                      Inoltre in questo modulo Š inclusa una procedura BAR potenziata
+                      che migliora le prestazioni delle applicationi grafiche.
+                      Assieme a questa procedura sono accluse altre procedure
+                      BAR che permettono utilizzare le diverse modalit… di scrittura.
+                      Questo modulo Š utilizzato dalla libreria, ma pu• essere
+                      utilizzato anche con programmi che non utilizzano la libreria.
+
+2  - FONTS............Gestore dei fonts in formato Windows(TM). E' indipendente
+                      dalla libreria GOLIB e pu• essere utilizzato anche con
+                      programmi in modalit… grafica che non utilizzano la libreria.
+                      Per il suo funzionamento utilizza il modulo GRAFTOOL.
+
+3  - BITMAPS..........Modulo contenente un'API per la gestione bitmapped graphics
+                      (* infuturo questo modulo potrebbe essere incluso nel
+                      modulo GRAFTOOL *).
+
+4  - CODICI...........Raccolta dei codici degli eventi del mouse e per il
+                      controllo della tastiera.
+
+5  - GOLIBCOD.........Serie di codici per l'accesso alle risorse standard della
+                      libreria contenute nel modulo GOLIB. Per accedere a tali
+                      risorse di devono utilizzare le funzioni del modulo RESMAN.
+
+6  - GOLIB............Modulo pricipale della libreria. Contiene il gestore della
+                      Display-List.
+
+7  - WINDOW...........Modulo contenente l'oggetto OTWindow e altri oggetti e tipi
+                      per la gestione del layout della finestra.
+
+8  - MENU.............Insieme di oggetti per la gestione dei menu.
+
+9  - BITMAP...........Contiene gli oggetti OTBitmap e OTCursor che incapsulano
+                      le procedure contenute nel modulo BITMAPS.
+
+10 - BUTTONS..........Insieme di oggetti per la creazione di bottoni.
+
+11 - SCROLLS..........Modulo contenente gli oggetti scrollers (scorritori).
+
+12 - XSCROLLS.........Modulo contenente gli oggetti scrollers estesi.
+
+13 - W_INTEST.........Oggetti di utilit… per la creazione delle intestazioni
+                      delle finestre OTWindow (* infuturo questo modulo potrebbe
+                      essere incluso nel modulo GOLIB *).
+
+14 - TOOLBAR..........Modulo contenente l'oggetto OTToolBar e due funzioni di
+                      utiliti per l'inizializzazione delle toolbars.
+
+15 - RESMAN...........In questo modulo sono contenute una serie di funzioni
+                      per la lettura dei files risorsa (.RES) in formato
+                      Windows(TM).
+
+
+
+------------------------------------------------------------------------------
+Al  27/01/1995  la dimensione totale della libreria senza le informazioni di
+debug Š di
+             110.640 bytes.
+------------------------------------------------------------------------------
+Al  03/07/1995  la dimensione totale della libreria senza le informazioni di
+debug Š di
+             226.256 bytes.
+------------------------------------------------------------------------------
+Al  19/08/1995  la dimensione totale della libreria senza le informazioni di
+debug Š di
+             256.976 bytes.
+------------------------------------------------------------------------------
+
+
+La dimensione della libreria Turbo Vision Š di 266.864 bytes
+
+
+
+
+
+______________________________________________________________________________
+
+                           Tipi definiti
+ Dim.(byte)  Nome
+______________________________________________________________________________
+
+     4       PParametri
+
+   255       TParametri
+
+     1       TBordo
+
+     1       TLayoutParam
+
+     1       TValueMethod
+
+     1       TParent
+
+
+______________________________________________________________________________
+
+                              Oggetti definiti
+ Dim.(byte)  Struttura :
+______________________________________________________________________________
+
+0       *VIP OTView ................................. <= Astratto   (*)
+               ³
+0       *VIP   ÃÄ-OTCompositeObject ................. <= Astratto   (**)
+               ³    ³
+0        VIP   ³    ÃÄ-OTWindow ..................... <= Astratto   (**)
+               ³    ³    ³
+0        VIP   ³    ³    ÃÄ-OTFrame ................. <= Semi Astratto   (***)
+               ³    ³    ³    ³
+         VIP   ³    ³    ³    ÀÄ-OTToolBox
+               ³    ³    ³
+         VIP   ³    ³    ÃÄ-OTScrollBox
+               ³    ³    ³    ³
+         VIP   ³    ³    ³    ÃÄ-OTListBox
+               ³    ³    ³    ³
+         VIP   ³    ³    ³    ÀÄ-OTXListBox
+               ³    ³    ³
+               ³    ³    ÀÄ-OTStrField
+               ³    ³
+         VIP   ³    ÃÄ-OTGroup
+               ³    ³
+         VIP   ³    ÃÄ-OTCheckButtons
+               ³    ³
+         VIP   ³    ÃÄ-OTRadioButtons
+               ³    ³
+         VIP   ³    ÃÄ-OTToolBar
+               ³    ³
+         VIP   ³    ÀÄ-OTStatusLine
+               ³
+               ÃÄ-OTBitmap
+               ³
+               ÃÄ-OTIcon
+               ³
+               ÃÄ-OTBackground
+               ³
+         VIP   ÃÄ-OTButton ..................... <= Semi Astratto   (***)
+               ³    ³
+         VIP   ³    ÃÄ-OTTextButton
+               ³    ³
+         VIP   ³    ÃÄ-OTCheckButton
+               ³    ³    ³
+         VIP   ³    ³    ÀÄ-OTRadioButton
+               ³    ³
+               ³    ÀÄ-OTCloseButton
+               ³
+         VIP   ÃÄ-OTMenuLine
+               ³
+         VIP   ÃÄ-OTMenuPopUp
+               ³
+               ÃÄ-OTScrollBar
+               ³
+               ÃÄ-OTListViewer
+               ³
+               ÃÄ-OTXListViewer
+               ³
+         VIP   ÃÄ-OTPopUpFiled
+               ³
+         VIP   ÃÄ-OTXPopUpFiled
+               ³
+               ÃÄ-OTResizingIcon
+               ³
+               ÃÄ-OTLine
+               ³    ³
+               ³    ÃÄ-OTRectangle
+               ³    ³
+               ³    ÀÄ-OTCircle
+               ³
+0              ÀÄ-OTBar
+                    ³
+                    ÃÄ-OTesto
+                    ³
+                    ÃÄ-OTRectIn3D
+                    ³
+                    ÃÄ-OTRilievo3D
+                    ³
+                    ÃÄ-OTRilievo3DSoft
+                    ³
+0                   ÃÄ-OTWin3D
+                    ³
+                    ÃÄ-OTIncavo3D
+                    ³
+                    ÀÄ-OTIncavo3DSoft
+                         ³
+                         ÀÄ-OTField         { Oggetto utile per l'oggetto
+                                              OTStatusLine }
+             OTXList
+               ³
+               ÀÄ-OTXTextLine
+
+             OTXXList
+               ³
+               ÀÄ-OTXXTextLine
+
+
+             OTFont (* GOLIB Indipendent *)
+
+             OTIntest
+               ³
+               ÃÄ-OTCloseIntest
+               ³
+               ÃÄ-OTFullIntest
+               ³
+               ÀÄ-OTDialogIntest
+
+             OTRect
+
+             OTRects
+
+0            OTLayout
+
+0            OTLayoutMetrics
+
+
+( VIP = Very Important Product )
+
+______________________________________________________________________________
+
+
+    41   oggetto/i del ramo di OTView
+
+     2   oggetto/i del ramo di OTXList
+
+     2   oggetto/i del ramo di OTXXList
+
+     1   oggetto/i risorsa GOLIB Indipendent
+
+     8   oggetto/i di utilit…
+   ____
+
+    54   oggetti in totale
+   ====
+
+
+
+Note.
+
+  * Questi tipi di oggetto non possono essere utilizzati direttamente, ma bisogna
+    creare dei loro derivati per poter usufruire delle loro funzionalit….
+
+ ** Questi oggetti possono essere utilizzati, ma solo dopo essere costruiti, altrimenti
+    sono alla stessa stregua degli astratti puri(*).
+
+*** Questi oggetti possono essere direttamente utilizzati. Sono per• da prendere
+    come punto di riferimento per la creazione di nuovi oggetti ai quali questi
+    possono fare da genitori.
+
+
+

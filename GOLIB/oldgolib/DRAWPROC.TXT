@@ -1,0 +1,49 @@
+RIGUARDO ALLA PROCEDURA "DrawRefreshListProc" del modulo DISPFILE.
+------------------------------------------------------------------
+
+Disegna la lista utilizzando la procedura "proc" passata come parametro.
+
+Se viene selezionato un metodo di chiamata "ObjectNoParam" oppure
+"ObjectYesParam", allora, affinchä venga eseguita la procedura, ä necessario
+che "obj" sia diverso da NIL. Infatti per questi due tipi di chiamata viene
+passato alla procedura il puntatore a "Self" come ultimo paramentro.
+
+Per il modello "ObjectNoParam" il prototipo del metodo deve essere semplicemente:
+
+   procedure ();
+
+Per il modello "ObjectYesParam" il prototipo del metodo deve essere:
+
+   procedure (DWORD);
+
+
+N.B.: per i tipi di chiamata ad oggetti sono ammessi solo quelli appartenenti
+      al ramo OTView perchä viene fatto riferimento ad alcuni campi di questo
+      oggetto.
+
+
+
+
+Per i tipi di chiamata "NoParam" e "YesParam" viengono comunque passati come
+ultimi parametri due interi con segno che indica l'angolo in alto a sinistra
+da cui iniziare a disegnare un ipotetico disegno. Queste coordinate sono
+molto utili perchä se la lista di refresh ä articolata da pió rettangoli, allora
+ä necessario chiamare pió volte la procedura tante volte quantei sono i rettangoli
+della lista. Ora dato la procedura chiamata dovrebbe disegnare qualcosa, affinchä
+il disegno risultante si a corretto ä necessario aggiungere le due coordinate
+a tutte le coordinate coinvolte nel disegno.
+
+Per il modello "NoParam" il prototipo della procedure deve essere:
+
+   procedure (WORD, WORD);
+
+Per il modello "YesParam" il prototipo della procedure deve essere:
+
+   procedure (DWORD, WORD, WORD);
+
+
+La prima WORD rappresenta la X, mentre la seconda la Y.
+
+
+N.B.: Questa procedura non cancella la lista delle viste.
+

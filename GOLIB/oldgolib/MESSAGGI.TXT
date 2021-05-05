@@ -1,0 +1,80 @@
+DESCRIZIONE DEI MESSAGGI E DEI PARAMETRI A LORO ASSOCIATI.
+-----------------------------------------------------------------------------
+
+Struttura dei registri di un messaggio:
+            ษอออออออออออออออออออออออออออออออออออออออออออป
+            บ                  long1Reg                 บ
+            วฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤยฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤถ
+            บ        w1Reg        ณ        w2Reg        บ
+            วฤฤฤฤฤฤฤฤฤฤยฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤยฤฤฤฤฤฤฤฤฤฤถ
+            บ b1Reg    ณ b2Reg    ณ b3Reg    ณ b4Reg    บ
+            ศออออออออออฯออออออออออฯออออออออออฯออออออออออผ
+            ษอออออออออออออออออออออออออออออออออออออออออออป
+            บ                  long2Reg                 บ
+            วฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤยฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤถ
+            บ        w3Reg        ณ        w4Reg        บ
+            วฤฤฤฤฤฤฤฤฤฤยฤฤฤฤฤฤฤฤฤฤลฤฤฤฤฤฤฤฤฤฤยฤฤฤฤฤฤฤฤฤฤถ
+            บ b5Reg    ณ b6Reg    ณ b7Reg    ณ b8Reg    บ
+            ศออออออออออฯออออออออออฯออออออออออฯออออออออออผ
+
+
+-----------------------------------------------------------------------------
+
+Messaggi generati dalle scroll bar orizontali:
+  _SCROLL_H_AVANTI_
+  _SCROLL_H_INDIETRO_
+  _SCROLL_H_MOVE_
+  _SCROLL_H_PAGE_AVANTI_
+  _SCROLL_H_PAGE_INDIETRO_
+
+Parametri che la scroll bar passa attraverso il messaggio:
+  w1Reg    = posizione virtuale del cursore
+  long2Reg = puntatore alla scroll bar
+
+
+-----------------------------------------------------------------------------
+
+
+Messaggi generati dalle scroll bar verticali:
+  _SCROLL_V_AVANTI_
+  _SCROLL_V_INDIETRO_
+  _SCROLL_V_MOVE_
+  _SCROLL_V_PAGE_AVANTI_
+  _SCROLL_V_PAGE_INDIETRO_
+
+Parametri che la scroll bar passa attraverso il messaggio:
+  w1Reg    = posizione virtuale del cursore
+  long2Reg = puntatore alla scroll bar
+
+
+-----------------------------------------------------------------------------
+
+
+Messaggi per comunicare con le scroll bar:
+  _SCROLL_AVANTI_
+  _SCROLL_INDIETRO_
+  _SCROLL_MOVE_
+  _SCROLL_PAGE_AVANTI_
+  _SCROLL_PAGE_INDIETRO_
+
+Parametri del messaggio _SCROLL_MOVE_:
+  w1Reg    = posizione virtuale del cursore
+
+
+-----------------------------------------------------------------------------
+
+
+Messaggio SYS_REFRESH_OBJ.
+
+Effettua un rifresco dell'oggetto specificato.
+
+  long2Reg = puntatore all'oggetto da rinfrescare
+
+
+
+
+
+
+
+
+

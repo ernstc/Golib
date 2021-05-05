@@ -1,0 +1,81 @@
+
+ Il volume nell'unit… C Š IBMDOS_5   
+ Il numero di serie del volume Š 2039-8176
+
+Directory di C:\BP\EXAMPLES\DOCDEMOS\HELPEX
+
+BULLET   BMP           342 27/10/92    7.00
+CHKBOFF  BMP           122 27/10/92    7.00
+CHKBON   BMP           122 27/10/92    7.00
+CODEC    BMP         1.014 27/10/92    7.00
+CONTINUE BMP           822 27/10/92    7.00
+DONE     BMP           822 27/10/92    7.00
+HELPICON BMP           178 27/10/92    7.00
+MAX2ICON BMP           146 27/10/92    7.00
+MOUSE    BMP           194 27/10/92    7.00
+WINWORD  BMP           438 27/10/92    7.00
+       10 file             4.200 byte
+
+Directory di C:\BP\EXAMPLES\WIN\OWL
+
+BLAISE   BMP        21.238 27/10/92    7.00
+NOLIMITS BMP       153.718 27/10/92    7.00
+RACECAR  BMP        25.718 27/10/92    7.00
+        3 file           200.674 byte
+
+Directory di C:\TP7
+
+GOLIB8   BMP <DIR>         27/03/96   13.35
+        1 file                 0 byte
+
+Directory di C:\TP7\GOLIB8.BMP
+
+GOLIB8_3 BMP        53.798 18/05/95   21.25
+GOLIB8TM BMP        53.798 03/06/95   19.50
+GOLIB8_2 BMP        53.798 03/06/95   19.51
+NETSCAPE BMP        74.038 26/03/96   19.47
+TENNIS   BMP         1.398 08/03/96   16.58
+NET2     BMP        18.598 26/03/96   19.48
+NET3     BMP         9.238 26/03/96   20.02
+        7 file           264.666 byte
+
+Directory di C:\WINDOWS
+
+256COLOR BMP         5.078 21/03/92   12.00
+ARCADE   BMP           630 21/03/92   12.00
+ARCHES   BMP        10.358 21/03/92   12.00
+ARGYLE   BMP           630 21/03/92   12.00
+CARS     BMP           630 21/03/92   12.00
+CASTLE   BMP           778 21/03/92   12.00
+CHITZ    BMP        19.918 21/03/92   12.00
+EGYPT    BMP           630 21/03/92   12.00
+F1       BMP        16.062 13/02/96   12.39
+FLOCK    BMP         1.630 21/03/92   12.00
+HONEY    BMP           854 21/03/92   12.00
+LEAVES   BMP        15.118 21/03/92   12.00
+MARBLE   BMP        27.646 21/03/92   12.00
+REDBRICK BMP           630 21/03/92   12.00
+RIVETS   BMP           630 21/03/92   12.00
+SQUARES  BMP           630 21/03/92   12.00
+TARTAN   BMP        32.886 21/03/92   12.00
+THATCH   BMP           598 21/03/92   12.00
+WINLOGO  BMP        38.518 21/03/92   12.00
+ZIGZAG   BMP           630 21/03/92   12.00
+       20 file           174.484 byte
+
+Directory di C:\WORD
+
+F1       BMP        14.462 13/02/96   14.11
+F1D      BMP        14.462 20/02/96   11.06
+F2       BMP        21.662 13/02/96   17.31
+F2D      BMP        14.462 20/02/96   11.07
+F3       BMP        21.662 20/02/96   11.06
+F3D      BMP        14.462 20/02/96   11.05
+F4       BMP        22.862 17/02/96   12.43
+F5       BMP        22.862 20/02/96    9.53
+VUOTO    BMP        32.118 24/12/95   13.18
+        9 file           179.014 byte
+
+Totale dei file elencati:
+       50 file           823.038 byte
+                      42.160.128 byte disponibili

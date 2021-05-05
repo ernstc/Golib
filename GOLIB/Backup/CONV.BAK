@@ -1,0 +1,10 @@
+var f:text;
+    i:byte;
+
+begin
+  assign(f,'conv.bat');
+  for i:=1 to 9 do writeln(f,'rename "Er C000',i,'.bmp" Er_C000',i,'.bmp');
+  for i:=10 to 99 do writeln(f,'rename "Er C00',i,'.bmp" Er_C00',i,'.bmp');
+  for i:=100 to 122 do writeln(f,'rename "Er C0',i,'.bmp" Er_C0',i,'.bmp');
+  close(f);
+end.

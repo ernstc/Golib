@@ -1,0 +1,41 @@
+by Ernesto CIANCIOTTA Productions
+------------------------------------------------------------------------------
+
+Descrizione del funzionamento della funzione:
+
+   function CreateCompatibleArea(var CompatibleArea:pointer; var BitMap):pointer;
+
+il cui codice sorgente ä contenuto nel file CREATECA.ASM.
+
+
+
+   Lo scopo di questa funzione ä quello di interfaccciare una qualsiasi
+immagine BITMAP al supporto video installato sulla macchina.
+
+   La funzione crea una regione di memoria nello HEAP in cui sono memorizzate
+le informazioni necessarie per la visualizzazione del BITMAP.
+
+   Queste informazioni sono il risultato di una trasformazione della descrizione
+BITMAP originale.
+
+   Cosç ad esempio ä possibile visualizzare su di dispositivo video a 16
+colori immagini a 16, 256, 32000, ecc... colori senza vincolo di formato
+dell'immagine.
+
+
+------------------------------------------------------------------------------
+A) Visualizzazione di un'immagine a 16 colori su di un dispositivo a 16 colori.
+
+
+  In questo caso la funzione provvederÖ a scomporre la descrizione originale
+dell'immagine nella descrizione dei quattro piani di colori.
+
+  Ogni piano di colore verrÖ allocato in un proprio segmento nello HEAP.
+In questo modo ä possibile visualizzare immagini di dimensioni massime di
+262144 bytes (256K).
+
+  Successivamente verranno copiati i dati nel Frame-Buffer con la procedura
+"BitBtlMove".
+
+
+

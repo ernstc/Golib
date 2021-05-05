@@ -1,0 +1,1452 @@
+{ by ERNESTO CIANCIOTTA Productions }
+
+{*************************************************}
+{*                                               *}
+{*  GOLIB => Graphics Object LIBrary             *}
+{*                                               *}
+{*  Modulo principale della libreria.            *}
+{*                                               *}
+{*  Scritto con Turbo Pascal ver 7.0.            *}
+{*                                               *}
+{*************************************************}
+
+{$D+}
+{$L+}
+{$X+}
+
+UNIT DispFile;
+
+INTERFACE
+
+   uses
+       {$IFDEF debugging}
+        crt,
+       {$ENDIF}
+
+        codici,
+        mouse,
+        graph,
+        graftool,
+        golib_h,
+        golib9;
+
+
+   type
+        TCallType = (NoParam,YesParam,ObjectNoParam,ObjectYesParam);
+
+
+
+   procedure InitDISPFILE;
+   procedure DoneDISPFILE;
+
+
+
+   procedure Frammenta(var FirstList, __k, k:PRefreshRectList;var x:OTRect);
+
+   { Le seguenti procedure generano liste di regioni rettangolari a partire
+     dalla lista "RefreshRectList" passatagli come parametro.
+     Se "RefreshRectList" Š nil, allora non verr… generata nessuna lista, mentre
+     se "RefreshRectList" Š NullObj, allora verr… generata una nuova lista. }
+   function GetLightListOf( obj:OPView; OtherRect:OPRect;
+                            RefreshRectList:PRefreshRectList):PRefreshRectList;
+   function GetShadowListOf(obj:OPView; Source:OPRect):PRefreshRectList;
+   function GetVisibleZone( obj:OPView; OtherRect:OPRect;
+                            RefreshRectList:PRefreshRectList):PRefreshRectList;
+
+   procedure SortRefreshRectList(var list:PRefreshRectList; method:TSortingMethod);
+   procedure DisposeRefreshList(var list:PRefreshRectList);
+   procedure DrawRefreshRectList(Rects:PRefreshRectList; obj:OPView);
+   procedure DrawRefreshListProc(Rects:PRefreshRectList; obj:OPView; proc:pointer; Param:pointer; CallType:TCallType);
+   procedure RefreshRect(var Rect:OTRect; Start:OPView; RefreshRectList:PRefreshRectList);
+   procedure RefreshDisplay;
+
+
+IMPLEMENTATION
+
+
+   type
+          PVisibleList = ^TVisibleList;
+          TVisibleList = record
+             r:OTRect;
+             obj:OPView;
+             prec,succ:PVisibleList;
+          end;
+
+          PCompactList = ^TCompactList;
+          TCompactList = record
+             pointers: TPointers;
+             obj:      OPView;
+             next:     PCompactList;
+          end;
+
+
+   {var
+            BlankBar:OPBar;}
+
+   const
+         { Lista LIFO }
+         CompactList: PCompactList = nil;
+
+         { Necessari per il ripristino della display-list }
+         PrecPrimo:  OPView = nil;
+         PrecUltimo: OPView = nil;
+
+
+(*
+         { Se TRUE allora GetLightListOf e GetShadowListOf compattano il
+           livello dell'oggetto che gli viene passato.
+
+           L'utilit… di questo flag Š quella di disattivare la compattazione
+           in GetLightListOf e GetShadowListOf durante l'esecuzione di
+           GetVisibleZone che oltre a compattare il livelli da quello
+           dell'oggetto passatogli a quello pi— alto, chiama GetLightListOf.
+         }
+         Compatta_livello: boolean = true;
+*)
+
+
+
+
+   procedure InitDISPFILE;
+     begin
+       {Inizializzazione della display-list.}
+       primo:=nil;
+       ultimo:=nil;
+       RectSortMethod:=FIFO;
+       {new(BlankBar,Init(Null_ID,FullRect,1,0));}
+     end;
+
+   procedure DoneDISPFILE;
+     var bufV:OPView;
+     begin
+       {Deinizializzazione della display-list.}
+       lookvideo:=LookVideoOnShutDown;
+       while Primo<>nil do begin
+         bufV:=Primo;
+         if seg(bufV^)<>DSeg then dispose(bufV,Done)
+                             else bufV^.done;
+         {$IFDEF Debugging}
+           if WaitInShutDown then
+             if WaitDelay<0 then readkey
+                            else delay(WaitDelay);
+         {$ENDIF}
+       end;
+       {dispose(BlankBar,Done);}
+     end;
+
+
+ {²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²}
+ {²²²²²²²²²²²²²²                                            ²²²²²²²²²²²²²²²}
+ {²²²²²²²²²²²²²² QUARTA VERSIONE DELLE PROCEDURE DI REFRESH ²²²²²²²²²²²²²²²}
+ {²²²²²²²²²²²²²²                                            ²²²²²²²²²²²²²²²}
+ {²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²}
+
+  var ProblemType: byte;
+
+
+  procedure AdjustRectForViewPort(var r:OTRect);
+    begin
+      with r do begin
+        if x1<0 then x1:=0;
+        if x2>_MaxXResolution then x2:=_MaxXResolution;
+        if x2<x1 then x1:=MaxXResolution;
+        if y1<0 then y1:=0;
+        if y2>_MaxYResolution then y2:=_MaxYResolution;
+        if y2<y1 then y1:=MaxYResolution;
+      end;
+    end;
+
+
+  procedure Frammenta(var FirstList, __k, k:PRefreshRectList;var x:OTRect);
+    { "__k" Š il precedente di "k" }
+    var y:OTRect;
+        buf:PRefreshRectList;
+
+    procedure newElement(m1,n1,m2,n2:integer);
+       begin
+         { Aggiunge un elemento alla Lista e lo posiziona
+           dopo "k" : }
+         new(__k);
+         __k^.succ:=k^.succ;
+         k^.succ:=__k;
+         __k:=k;
+         k:=k^.succ;
+         with k^.r do begin
+           x1:=m1;
+           y1:=n1;
+           x2:=m2;
+           y2:=n2;
+         end;
+       end;
+
+    begin
+      ProblemType:=0;
+      y:=k^.r;
+      {
+        Risoluzione del problema:
+      }
+      with k^.r do begin
+        {
+          Determinazione del tipo di problema
+          (del tipo di intersezione in realt…):
+        }
+        if x.x1<=x1 then ProblemType:=ProblemType or $08; { Af }
+        if x.y1<=y1 then ProblemType:=ProblemType or $04; { Bf }
+        if x.x2>=x2 then ProblemType:=ProblemType or $02; { Cf }
+        if x.y2>=y2 then ProblemType:=ProblemType or $01; { Df }
+      end;
+      with k^ do case ProblemType of
+         { Tipo     |            }
+         { Problema |    byte/s  }
+         {    1     }     3: with x do begin
+                               r.y2:=y1-1;
+                               newElement(y.x1,y1,x1-1,y.y2);
+                             end;
+         {    1     }     6: begin
+                               with r do begin
+                                 x2:=x.x1-1;
+                                 y2:=x.y2;
+                               end;
+                               with y do newElement(x1,x.y2+1,x2,y2);
+                             end;
+         {    1     }     9: with x do begin
+                               r.y2:=y1-1;
+                               newElement(x2+1,y1,y.x2,y.y2);
+                             end;
+         {    1     }    12: begin
+                               with x do begin
+                                 r.x1:=x2+1;
+                                 r.y2:=y2;
+                               end;
+                               with y do newElement(x1,x.y2+1,x2,y2);
+                             end;
+         {----------}
+         {    2     }     7: r.x2:=x.x1-1;
+         {    2     }    11: r.y2:=x.y1-1;
+         {    2     }    13: r.x1:=x.x2+1;
+         {    2     }    14: r.y1:=x.y2+1;
+         {    3     }     5: begin
+                               r.x2:=x.x1-1;
+                               with y do newElement(x.x2+1,y1,x2,y2);
+                             end;
+         {    3     }    10: begin
+                               r.y2:=x.y1-1;
+                               with y do newElement(x1,x.y2+1,x2,y2);
+                             end;
+         {----------}
+         {    4     }     1: with x do begin
+                               r.y2:=y1-1;
+                               newElement(y.x1,y1,x1-1,y.y2);
+                               newElement(x2+1,y1,y.x2,y.y2);
+                             end;
+         {    4     }     2: begin
+                               r.y2:=x.y1-1;
+                               with x do newElement(y.x1,y1,x1-1,y2);
+                               with y do newElement(x1,x.y2+1,x2,y2);
+                             end;
+         {    4     }     4: begin
+                               with x do begin
+                                 r.x2:=x1-1;
+                                 r.y2:=y2;
+                                 newElement(x2+1,y.y1,y.x2,y2);
+                               end;
+                               with y do newElement(x1,x.y2+1,x2,y2);
+                             end;
+         {    4     }     8: begin
+                               with x do begin
+                                 r.y2:=y1-1;
+                                 newElement(x2+1,y1,y.x2,y2);
+                               end;
+                               with y do newElement(x1,x.y2+1,x2,y2);
+                             end;
+         {----------}
+         {    5     }     0: begin
+                               with x do begin
+                                 r.y2:=y1-1;
+                                 newElement(y.x1,y1,x1-1,y2);
+                                 newElement(x2+1,y1,y.x2,y2);
+                               end;
+                               with y do newElement(x1,x.y2+1,x2,y2);
+                             end;
+         {----------}
+         {    6     }    15: begin
+                               buf:=k;
+                               if FirstList=k then begin
+                                 FirstList:=k^.succ;
+                                 __k:=k^.succ;
+                               end
+                               else __k^.succ:=k^.succ;
+                               k:=k^.succ;
+                               dispose(buf);
+                               exit;
+                             end;
+         {----------}
+      end;
+      __k:=k;
+      k:=k^.succ;
+    end;
+
+
+
+  (************************************************************************)
+
+  procedure Compatta_verso_sopra(obj:OPView);
+    var punt:OPView;
+        padre_salvato:boolean;
+
+    procedure Save(obj:OPView);
+      var c:PCompactList;
+      begin
+        new(c);
+        c^.next:=CompactList;
+        CompactList:=c;
+        c^.pointers:=PPointers(@obj^._Father_)^;
+        c^.obj:=obj;
+      end;
+
+    begin
+      if obj=nil then exit;
+
+      obj:=obj^._up_;
+
+      { Ciclo che compatta, sul livello di obj, tutti gli oggetti al di
+        sopra di obj. }
+      while obj<>nil do
+        if ((obj^.SysConfig and cfCompactable)<>0) and
+           (obj^._gruppo_<>nil)
+        then begin
+          padre_salvato:=false;
+
+          { collegamento della sub-list a obj^._Father_ }
+          punt:=obj^._gruppo_;
+          while punt<>nil do begin
+            Save(punt);
+            punt^._Father_:=obj^._Father_;
+            punt:=punt^._down_;
+          end;
+
+          { collegamento della sub-list a obj^._up_ }
+          punt:=obj^._up_;
+          if punt<>nil then begin
+            Save(punt);
+            punt^._down_:=obj^._gruppo_;
+            obj^._gruppo_^._up_:=punt;
+          end
+          else begin
+            { se obj^._up_=nil allora si deve collegare
+              obj^._Father_ (oppure Primo se obj^._Father_=nil)
+              a obj^._gruppo_ }
+
+            if obj^._Father_=nil then  begin
+              { Salvataggio di Primo }
+              if PrecPrimo=nil then PrecPrimo:=Primo;
+              { collegamento di Primo a obj^._gruppo_ }
+              Primo:=obj^._gruppo_;
+            end
+            else begin
+              { salvataggio di padre }
+              Save(obj^._Father_);
+              padre_salvato:=true;
+              { collegamento di padre a obj^._gruppo_ }
+              obj^._Father_^._gruppo_:=obj^._gruppo_;
+            end;
+          end;
+
+          { collegamento della sub-list a obj^._down_ }
+          punt:=obj^._down_;
+          if punt<>nil then begin
+            Save(punt);
+            punt^._up_:=obj^._last_;
+            obj^._last_^._down_:=punt;
+          end
+          else begin
+            { se obj^._down_=nil allora si deve collegare
+              obj^._Father_ (oppure Ultimo se obj^._Father_=nil)
+              a obj^._last_ }
+
+            if obj^._Father_=nil then  begin
+              { Salvataggio di Primo }
+              if PrecUltimo=nil then PrecUltimo:=Ultimo;
+              { collegamento di Ultimo a obj^._last_ }
+              Ultimo:=obj^._last_;
+            end
+            else begin
+              { salvataggio di padre }
+              if not padre_salvato then Save(obj^._Father_);
+              { collegamento di padre a obj^._last_ }
+              obj^._Father_^._last_:=obj^._last_;
+            end;
+          end;
+
+          obj:=obj^._last_;
+        end
+        else obj:=obj^._up_;
+    end;
+
+
+  procedure Ripristina_displist;
+    var punt: PCompactList;
+    begin
+      while CompactList<>nil do begin
+        punt:=CompactList;
+        CompactList:=CompactList^.next;
+        with punt^ do PPointers(@obj^._Father_)^:=pointers;
+        dispose(punt);
+      end;
+      if PrecPrimo<>nil then Primo:=PrecPrimo;
+      if PrecUltimo<>nil then Ultimo:=PrecUltimo;
+    end;
+
+  (************************************************************************)
+
+
+
+  function GetLightListOf( obj:OPView; OtherRect:OPRect;
+                           RefreshRectList:PRefreshRectList):PRefreshRectList;
+    var  x: OTRect;
+         FirstLight,
+         __Light,
+         Light:PRefreshRectList;
+         punt:OPView;
+
+    begin
+      if obj=nil then begin
+        GetLightListOf:=NullObj;
+        exit;
+      end;
+      if RefreshRectList=NullObj then begin
+        new(FirstLight);
+        { Preparazione della LIGHT LIST che sara composta di un unico
+          elemento se l'oggetto Š il primo della lista altrimenti di
+          tanti rettangoli quanti sono i rettangoli visibili del oggetto
+          in questione (il parametro "obj").
+
+          Nel caso in cui "OtherRect" sia diverso da nil allora verra cercata
+          la parte di "OtherRect",a partire da obj, che Š visibile dall'alto e
+          non la parte di "obj". }
+        if OtherRect<>nil
+          then FirstLight^.r:=OtherRect^
+          else FirstLight^.r:=obj^.r;
+        FirstLight^.succ:=nil;
+      end
+      else FirstLight:=RefreshRectList;
+
+      {if Compatta_livello then} Compatta_verso_sopra(obj);
+
+      punt:=obj^._up_;
+      {
+        Processo di Frammentazione del rettangolo Light verso l'alto per
+        vedere quali parti di esso sono visibili:
+      }
+      while (punt<>nil) and (FirstLight<>nil) do begin
+        if (punt^.SysConfig and cfVisible)=cfVisible then begin
+          if punt^._gruppo_<>nil then begin
+
+          end;
+          { Frammentazione lista }
+          __Light:=FirstLight;
+          Light:=FirstLight;
+          while Light<>nil do
+            if Light^.r.Intersect(punt^.r,x)
+            then Frammenta(FirstLight,__Light,Light,x)
+            else begin
+              __Light:=Light;
+              Light:=Light^.succ;
+            end;
+        end;
+        punt:=punt^._up_;
+      end;
+
+      {if Compatta_livello then} Ripristina_displist;
+
+      GetLightListOf:=FirstLight;
+    end;
+
+
+  function GetShadowListOf(obj:OPView; Source:OPRect):PRefreshRectList;
+    { Questa funzione restituisce la lista dei rettangoli coperti
+      dell'oggetto "obj" in relazione al suo rettangolo (obj^.r) o
+      al rettangolo alternativo "Source". Nel caso in cui
+      l'oggetto sia completamente scoperto la funzione restituir… "nil". }
+    var  x,intrs: OTRect;
+         FirstShadow,  SecondList,
+         {__Shadow,}   _SecL_prec,
+         Shadow,       _SecL_punt     :PRefreshRectList;
+         negativo:boolean;
+         punt:OPView;
+    begin
+      if obj=nil then begin
+        GetShadowListOf:=NullObj;
+        exit;
+      end;
+      {
+      if Source<>nil then begin
+        AdjustRectForViewPort(Source^);
+        if (Source^.DimX<0) or (Source^.DimY<0) then exit;
+      end;}
+
+      {if Compatta_livello then} Compatta_verso_sopra(obj);
+
+      punt:=obj^._up_;
+      if punt=nil then GetShadowListOf:=nil
+      else begin
+        new(FirstShadow);
+        { Preparazione della lista.
+          Il primo oggetto della lista ha come rettangolo il risultato
+          dell'intersezione tra il rettangolo sorgente ("obj^.r" o "Source")
+          e il rettangolo dell'oggetto che si trova sopra "obj".
+        }
+        negativo:=true;
+        if Source=nil then Source:=@obj^.r;
+        { Si cerca di creare il primo elemento della lista "FirstShadow".
+          Se questa operazione non Š possibile, allora viene eliminato FirstShadow
+          e la funzione termina restituendo NIL. }
+        while (punt<>nil) and negativo do begin
+          negativo:=not Source^.Intersect(punt^.r,FirstShadow^.r);
+          if negativo then punt:=punt^._up_;
+        end;
+        if negativo then begin
+          dispose(FirstShadow);
+          GetShadowListOf:=nil;
+        end
+        else begin
+          {
+            Processo di Frammentazione ed espansione della lista SHADOW verso
+            l'alto per vedere quali altri parti di "obj" sono coperte:
+          }
+          FirstShadow^.succ:=nil;
+          punt:=punt^._up_;
+          while punt<>nil do begin
+            { Si va in alto fino a quando non si trova un altro oggetto che
+              interseca il rettangolo "Source" }
+            if ((punt^.SysConfig and cfVisible)=1) and punt^.r.Intersect(Source^,intrs) then begin
+              { Preparazione della seconda lista che contiene i rettangoli
+                aggintivi dell'oggetto "punt" }
+              New(SecondList);
+              SecondList^.succ:=FirstShadow;
+              SecondList^.r:=intrs;
+              { Frammentazione della lista "SecondList" }
+              Shadow:=FirstShadow;
+              while (Shadow<>nil) and (SecondList<>FirstShadow) do begin
+                _SecL_prec:=SecondList;
+                _SecL_punt:=SecondList;
+                while _SecL_punt<>FirstShadow do
+                  if _SecL_punt^.r.Intersect(Shadow^.r,x)
+                  then Frammenta(SecondList,_SecL_prec,_SecL_punt,x)
+                  else begin
+                    _SecL_prec:=_SecL_punt;
+                    _SecL_punt:=_SecL_punt^.succ;
+                  end;
+                Shadow:=Shadow^.succ;
+              end;
+              FirstShadow:=SecondList;
+            end;
+            punt:=punt^._up_;
+          end;
+          GetShadowListOf:=FirstShadow;
+        end;
+      end;
+
+      {if Compatta_livello then} Ripristina_displist;
+
+    end;
+
+
+  function GetVisibleZone( obj:OPView; OtherRect:OPRect;
+                           RefreshRectList:PRefreshRectList):PRefreshRectList;
+    { Questa funzione restituisce la lista delle zone visibili dell'oggetto
+      non solo nella sua sub-list, ma anche considerando la gerarchia
+      padre-figlio. Quindi viene fatta una scansione dal livello dell'oggetto
+      fino al livello pi— superiore della display-list. }
+    var List,
+        buf,
+        _Zone,
+         Zone:PRefreshRectList;
+        punt:OPView;
+    begin
+      (*
+      { Compatta dal livello di obj fino al livello pi— alto }
+      punt:=obj;
+      while punt<>nil do begin
+        Compatta_verso_sopra(punt);
+        punt:=punt^._Father_;
+      end;
+
+      Compatta_livello:=false;*)
+
+      { Stabilisce una lista di partenza che contiene la regione visibile
+        dell'oggetto sul suo stesso piano. }
+      List:=GetLightListOf(obj,OtherRect,RefreshRectList);
+      if obj^._father_<>nil then begin
+        while (obj^._father_<>nil) and (List<>nil) do begin
+          obj:=obj^._father_;
+          _Zone:=nil;
+          Zone:=List;
+          { Clipping della lista al rettangolo padre }
+          while Zone<>nil do
+            if obj^.R.Intersect(Zone^.r,Zone^.r) then begin
+              _Zone:=Zone;
+              Zone:=Zone^.succ;
+            end
+            else begin
+              { Se non c'Š intersezione allora l'elemento viene eliminato }
+              if _Zone<>nil then _Zone^.succ:=Zone^.succ;
+              buf:=Zone;
+              Zone:=Zone^.succ;
+              if List=buf then List:=Zone;
+              dispose(buf);
+              continue;
+            end;
+          List:=GetLightListOf(obj,nil,List);
+        end;
+      end;
+
+      (*
+      { Ripristina i puntatori degli oggetti della display-list }
+      Ripristina_displist;
+
+      Compatta_livello:=true;*)
+
+      GetVisibleZone:=List;
+    end;
+
+
+  procedure SortRefreshRectList(var list:PRefreshRectList; method:TSortingMethod);
+     var OrderedList,
+         FirstSHDW,
+          SHDW,
+         _SHDW:PRefreshRectList;
+
+     procedure NewEl_TL;
+       begin
+         SHDW:=OrderedList;
+         _SHDW:=nil;
+         while (SHDW<>nil) and
+               (
+                (SHDW^.r.y1<=List^.r.y1) and
+                ((SHDW^.r.x1<List^.r.x1) or
+                 (SHDW^.r.y1<>List^.r.y1)
+                )
+               )
+         do begin
+           _SHDW:=SHDW;
+           SHDW:=SHDW^.succ;
+         end;
+         { posiziona il nuovo elemento prima di SHDW }
+         new(FirstSHDW);
+         FirstSHDW^.r:=List^.r;
+         FirstSHDW^.succ:=SHDW;
+         if _SHDW<>nil then _SHDW^.succ:=FirstSHDW
+                       else OrderedList:=FirstSHDW;
+       end;
+
+     procedure NewEl_BL;
+       begin
+         SHDW:=OrderedList;
+         _SHDW:=nil;
+         while (SHDW<>nil) and
+               {(
+                (SHDW^.r.y2>List^.r.y2) or
+                ((SHDW^.r.x1<List^.r.x1) and
+                 (SHDW^.r.y2>List^.r.y2)
+                )
+               )}
+               (
+                (SHDW^.r.y2>=List^.r.y2) and
+                ((SHDW^.r.x1<List^.r.x1) or
+                 (SHDW^.r.y2<>List^.r.y2)
+                )
+               )
+         do begin
+           _SHDW:=SHDW;
+           SHDW:=SHDW^.succ;
+         end;
+         { posiziona il nuovo elemento prima di SHDW }
+         new(FirstSHDW);
+         FirstSHDW^.r:=List^.r;
+         FirstSHDW^.succ:=SHDW;
+         if _SHDW<>nil then _SHDW^.succ:=FirstSHDW
+                       else OrderedList:=FirstSHDW;
+       end;
+
+     procedure NewEl_TR;
+       begin
+         SHDW:=OrderedList;
+         _SHDW:=nil;
+         while (SHDW<>nil) and
+               {(
+                (SHDW^.r.y1<List^.r.y1) or
+                ((SHDW^.r.x2>List^.r.x2) and
+                 (SHDW^.r.y1<List^.r.y1)
+                )
+               )}
+               (
+                (SHDW^.r.y1<=List^.r.y1) and
+                ((SHDW^.r.x2>List^.r.x2) or
+                 (SHDW^.r.y1<>List^.r.y1)
+                )
+               )
+         do begin
+           _SHDW:=SHDW;
+           SHDW:=SHDW^.succ;
+         end;
+         { posiziona il nuovo elemento prima di SHDW }
+         new(FirstSHDW);
+         FirstSHDW^.r:=List^.r;
+         FirstSHDW^.succ:=SHDW;
+         if _SHDW<>nil then _SHDW^.succ:=FirstSHDW
+                       else OrderedList:=FirstSHDW;
+       end;
+
+     procedure NewEl_BR;
+       begin
+         SHDW:=OrderedList;
+         _SHDW:=nil;
+         while (SHDW<>nil) and
+               (
+                (SHDW^.r.y2>=List^.r.y2) and
+                ((SHDW^.r.x2>List^.r.x2) or
+                 (SHDW^.r.y2<>List^.r.y2)
+                )
+               )
+         do begin
+           _SHDW:=SHDW;
+           SHDW:=SHDW^.succ;
+         end;
+         { posiziona il nuovo elemento prima di SHDW }
+         new(FirstSHDW);
+         FirstSHDW^.r:=List^.r;
+         FirstSHDW^.succ:=SHDW;
+         if _SHDW<>nil then _SHDW^.succ:=FirstSHDW
+                       else OrderedList:=FirstSHDW;
+       end;
+
+    begin
+      OrderedList:=List;
+      if List<>nil then begin
+        List:=List^.succ;
+        OrderedList^.succ:=nil;
+      end;
+      if List<>nil then
+      case method of
+        TopLeft: while List<>nil do begin
+             NewEl_TL;
+             SHDW:=List;
+             List:=List^.succ;
+             dispose(SHDW);
+           end;
+        BottomLeft: while List<>nil do begin
+             NewEl_BL;
+             SHDW:=List;
+             List:=List^.succ;
+             dispose(SHDW);
+           end;
+        TopRight: while List<>nil do begin
+             NewEl_TR;
+             SHDW:=List;
+             List:=List^.succ;
+             dispose(SHDW);
+           end;
+        BottomRight: while List<>nil do begin
+             NewEl_BR;
+             SHDW:=List;
+             List:=List^.succ;
+             dispose(SHDW);
+           end;
+      end;
+      List:=OrderedList;
+    end;
+
+
+  procedure DisposeRefreshList(var list:PRefreshRectList);
+    var p:PRefreshRectList;
+    begin
+      p:=list^.succ;
+      while list<>nil do begin
+        dispose(list);
+        list:=p;
+        p:=list^.succ;
+      end;
+      list:=nil;
+    end;
+
+
+  procedure DrawRefreshRectList(Rects:PRefreshRectList; obj:OPView);
+    { Disegna l'oggetto (obj) nei rettangoli contenuti nella lista
+      "Rects".
+      N.B.: Viene disegnato solo l'oggetto "obj" e non altri oggetti.
+            Questa procedura cancella la lista delle viste. }
+    begin
+      DrawRefreshListProc(Rects,obj,GetVMP(typeOf(obj^),VMI_Disegna),nil,ObjectNoParam);
+      DisposeRefreshList(Rects);
+    end;
+
+
+  procedure DrawRefreshListProc(Rects:PRefreshRectList; obj:OPView; proc:pointer; Param:pointer; CallType:TCallType);
+    var Prec_Sort:TSortMethod;
+        X, Y: integer;
+        obj_mode: boolean;
+    begin
+      if (proc=nil) then exit;
+      obj_mode:= (byte(CallType) and 2)<>0;
+      if obj_mode then begin
+        if obj=nil then exit;
+      end
+      else begin
+        X:=0;
+        Y:=0;
+      end;
+      RefreshProcessing:=true;
+      Prec_Sort:=RectSortMethod;
+      if obj_mode then RectSortMethod:=obj^.PrefRefresh;
+      if MouseIn then HideMouseCursor;
+      while Rects<>nil do begin
+        with Rects^ do
+          if obj_mode and ((obj^.SysConfig and cfScanGroup)=cfScanGroup)
+          then RefreshRect(r,obj^._gruppo_,NullObj)
+          else begin
+            AdjustRectForViewPort(r);
+            if (r.x1<=_MaxXResolution) and (r.y1<=_MaxYResolution) then begin
+              SetViewPort(r.x1,r.y1,r.x2,r.y2,true);
+              if (byte(CallType) and 1)<>0 then asm
+                { Viene passato "Param" come parametro }
+                les     di,Param
+                push    es
+                push    di
+              end;
+              if obj_mode then begin
+                with obj^ do begin
+                  precR:=r;
+                  r.x2:=r.x2-Rects^.r.x1;
+                  r.y2:=r.y2-Rects^.r.y1;
+                  r.x1:=r.x1-Rects^.r.x1;
+                  r.y1:=r.y1-Rects^.r.y1;
+                end;
+                asm
+                  les     di,obj
+                  push    es
+                  push    di
+                  call    proc
+                end;
+                with obj^ do r:=precR;
+              end
+              else begin
+                X:=-Rects^.r.x1;
+                Y:=-Rects^.r.y1;
+                asm
+                  mov     ax,X
+                  push    ax
+                  mov     ax,Y
+                  push    ax
+                  call    proc
+                end;
+                X:=0;
+                Y:=0;
+              end;
+            end;
+          end;
+        Rects:=Rects^.succ;
+      end;
+      SetViewPort(0,0,_MaxXResolution,_MaxYResolution,true);
+      RectSortMethod:=Prec_Sort;
+      if MouseIn then ShowMouseCursor;
+      RefreshProcessing:=false;
+    end;
+
+
+  {²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²}
+  {²²²²²²²²²²²²²²²²²²²²²²²²²             ²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²}
+  {²²²²²²²²²²²²²²²²²²²²²²²²² RefreshRect ²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²}
+  {²²²²²²²²²²²²²²²²²²²²²²²²²             ²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²}
+  {²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²}
+
+
+  procedure RefreshRect(var Rect:OTRect; Start:OPView; RefreshRectList:PRefreshRectList);
+
+    const cfDeleteShadow = cfDrawFatherRect or
+                           cfOnDesktop;
+
+    var x: OTRect;
+        FirstShadow,
+        __Shadow,
+        Shadow:PRefreshRectList;
+
+        buf,
+        Head,
+        Coda,
+        VisibleObj,
+        Coda2: PVisibleList;
+        FirstIsPostDraw:boolean;
+
+        punt,p2: OPView;
+
+        prec_Sort:TSortMethod;
+
+        Framm,
+        Norm,
+        CancBar,
+        PostDraw :boolean;
+
+
+     procedure NewFirstElement;
+       begin
+         new(buf);
+         buf^.succ:=nil;
+         buf^.prec:=nil;   {*}
+         Head:=buf;
+         Coda:=buf;
+         Coda2:=buf;
+       end;
+
+     procedure NewElementAtList_FIFO;
+       begin
+         if Head=nil then NewFirstElement
+         else begin
+           new(buf);
+           buf^.succ:=Coda^.succ;
+           buf^.prec:=Coda;
+           Coda^.succ:=buf;
+           Coda:=buf;
+           if buf^.succ=nil then Coda2:=buf;
+         end;
+         Coda^.obj:=punt;
+         Coda^.r:=x;
+       end;
+
+
+     procedure NewElementAtList_LIFO;
+       begin
+         if Head=nil then NewFirstElement
+         else begin
+           new(buf);
+           buf^.succ:=Head;
+           buf^.prec:=nil;
+           Head^.prec:=buf;
+           Head:=buf;
+         end;
+         Head^.obj:=punt;
+         Head^.r:=x;
+       end;
+
+
+(*     { Ordina da quello che ha la coordinata pi— in alto a sinistra a
+                 quello che ha la coordinata pi— in basso a destra. }
+     function GetTLBR:boolean; near;
+       begin
+         GetTLBR:=not (
+                       (VisibleObj^.r.y1>x.y1) or
+                       (
+                        (VisibleObj^.r.y1=x.y1) and
+
+                        (VisibleObj^.r.x1>=x.x1)
+                       )
+                      )
+       end;
+
+
+     { Ordina da quello che ha la coordinata pi— a sinistra in alto a
+                 quello che ha la coordinata pi— a destra in basso. }
+     function GetLTRB:boolean; near;
+       begin
+         GetLTRB:=not (
+                       (VisibleObj^.r.x1>x.x1) or
+                       (
+                        (VisibleObj^.r.x1=x.x1) and
+
+                        (VisibleObj^.r.y1>=x.y1)
+                       )
+                      )
+       end;
+
+
+     procedure NewElementAtList_Ordered(method:TSortMethod);
+       var PtrFunc:pointer;
+           func: function:boolean absolute PtrFunc;
+       begin
+         if Head=nil then begin
+           NewFirstElement;
+           Head^.obj:=punt;
+           Head^.r:=x;
+         end
+         else begin
+           case method of
+             LTRB: PtrFunc:=@GetLTRB;
+           else
+             PtrFunc:=@GetTLBR;
+           end;
+           New(buf);
+           buf^.obj:=punt;
+           buf^.r:=x;
+           VisibleObj:=Head;
+           while (VisibleObj^.succ<>Coda^.succ) and func
+           do
+             VisibleObj:=VisibleObj^.succ;
+           if func
+           then begin
+             { buf Š l'oggetto pi— in basso a destra e viene posizionato
+               all'ultimo posto }
+             buf^.prec:=VisibleObj;
+             buf^.succ:=Coda^.succ;
+             VisibleObj^.succ:=buf;
+             Coda:=buf;
+           end
+           else begin
+             { buf viene posizionato prima di VisibleObj }
+             buf^.prec:=VisibleObj^.prec;
+             buf^.succ:=VisibleObj;
+             if buf^.prec<>nil then buf^.prec^.succ:=buf;
+             if VisibleObj=Head then Head:=buf;
+             VisibleObj^.prec:=buf;
+           end;
+         end;
+       end;
+*)
+
+     procedure NewElementAtList_TLBR;
+       begin
+         if Head=nil then begin
+           NewFirstElement;
+           Head^.obj:=punt;
+           Head^.r:=x;
+         end
+         else begin
+           New(buf);
+           buf^.obj:=punt;
+           buf^.r:=x;
+           VisibleObj:=Head;
+           while (VisibleObj^.succ<>Coda^.succ) and
+                 {not
+                 (
+                  (VisibleObj^.r.y1>x.y1) or
+                  (
+                   (VisibleObj^.r.y1=x.y1) and
+
+                   (VisibleObj^.r.x1>=x.x1)
+                  )
+                 )}
+                 (
+                  (VisibleObj^.r.y1<=x.y1) and
+                  (
+                   (VisibleObj^.r.y1<>x.y1) or
+
+                   (VisibleObj^.r.x1<x.x1)
+                  )
+                 )
+           do
+             VisibleObj:=VisibleObj^.succ;
+           if {not (
+              (VisibleObj^.r.y1>x.y1) or
+              (
+               (VisibleObj^.r.y1=x.y1) and
+
+               (VisibleObj^.r.x1>=x.x1)
+              )
+              )}
+              (
+               (VisibleObj^.r.y1<=x.y1) and
+               (
+                (VisibleObj^.r.y1<>x.y1) or
+
+                (VisibleObj^.r.x1<x.x1)
+               )
+              )
+           then begin
+             { buf Š l'oggetto pi— in basso a destra e viene posizionato
+               all'ultimo posto }
+             buf^.prec:=VisibleObj;
+             buf^.succ:=Coda^.succ;
+             VisibleObj^.succ:=buf;
+             Coda:=buf;
+           end
+           else begin
+             { buf viene posizionato prima di VisibleObj }
+             buf^.prec:=VisibleObj^.prec;
+             buf^.succ:=VisibleObj;
+             if buf^.prec<>nil then buf^.prec^.succ:=buf;
+             if VisibleObj=Head then Head:=buf;
+             VisibleObj^.prec:=buf;
+           end;
+         end;
+       end;
+
+
+     procedure NewElementAtList_LTRB;
+       begin
+         if Head=nil then begin
+           NewFirstElement;
+           Head^.obj:=punt;
+           Head^.r:=x;
+         end
+         else begin
+           New(buf);
+           buf^.obj:=punt;
+           buf^.r:=x;
+           VisibleObj:=Head;
+           while (VisibleObj^.succ<>Coda^.succ) and
+                 {not
+                 (
+                  (VisibleObj^.r.x1>x.x1) or
+                  (
+                   (VisibleObj^.r.x1=x.x1) and
+
+                   (VisibleObj^.r.y1>=x.y1)
+                  )
+                 )}
+                 (
+                  (VisibleObj^.r.x1<=x.x1) and
+                  (
+                   (VisibleObj^.r.x1<>x.x1) or
+
+                   (VisibleObj^.r.y1<x.y1)
+                  )
+                 )
+           do
+             VisibleObj:=VisibleObj^.succ;
+           if {not (
+              (VisibleObj^.r.x1>x.x1) or
+              (
+               (VisibleObj^.r.x1=x.x1) and
+
+               (VisibleObj^.r.y1>=x.y1)
+              )
+              )}
+              (
+               (VisibleObj^.r.x1<=x.x1) and
+               (
+                (VisibleObj^.r.x1<>x.x1) or
+
+                (VisibleObj^.r.y1<x.y1)
+               )
+              )
+           then begin
+             { buf Š l'oggetto pi— in basso a destra e viene posizionato
+               all'ultimo posto }
+             buf^.prec:=VisibleObj;
+             buf^.succ:=Coda^.succ;
+             VisibleObj^.succ:=buf;
+             Coda:=buf;
+           end
+           else begin
+             { buf viene posizionato prima di VisibleObj }
+             buf^.prec:=VisibleObj^.prec;
+             buf^.succ:=VisibleObj;
+             if buf^.prec<>nil then buf^.prec^.succ:=buf;
+             if VisibleObj=Head then Head:=buf;
+             VisibleObj^.prec:=buf;
+           end;
+         end;
+       end;
+
+
+     procedure NewElementAtList_PostDraw;
+
+       procedure InCoda;
+         begin
+           buf^.prec:=Coda2;
+           buf^.succ:=nil;
+           Coda2^.succ:=buf;
+           Coda2:=buf;
+         end;
+
+       begin
+         if Head=nil then begin
+           NewFirstElement;
+           buf:=Head;
+           FirstIsPostDraw:=true;
+         end
+         else begin
+           new(buf);
+           if FirstIsPostDraw
+           then if (punt^.SysConfig and cfLPriority)=cfLPriority then InCoda
+             else begin
+               buf^.succ:=Head;
+               buf^.prec:=nil;  {*}
+               Head^.prec:=buf; {*}
+               Head:=buf;
+               Coda:=buf;
+             end
+           else if (punt^.SysConfig and cfLPriority)=cfLPriority then InCoda
+             else begin
+               buf^.prec:=Coda; {*}
+               buf^.succ:=Coda^.succ;
+               buf^.succ^.prec:=buf; {*}
+               Coda^.succ:=buf;
+             end;
+         end;
+         buf^.obj:=punt;
+         buf^.r:=x;
+       end;
+
+(*
+     procedure NewElementAtList_CancBar;
+     { Se questa procedura viene lanciata si presuppone che esista almeno un
+       elemento nella Visible-List e che FirstIsPostDraw sia False. }
+       begin
+         new(VisibleObj);
+         VisibleObj^.prec:=buf;
+         VisibleObj^.succ:=buf^.succ;
+         if buf=Coda then Coda:=VisibleObj;
+         if Coda^.succ=nil then Coda2:=Coda;
+         VisibleObj^.obj:=punt;
+         VisibleObj^.r:=x;
+       end;
+*)
+
+     procedure NewIfFirstIsPostDraw;
+       begin
+         new(buf);
+         buf^.obj:=punt;
+         buf^.r:=x;
+         buf^.succ:=Head;
+         buf^.prec:=nil;  {*}
+         Head^.prec:=buf; {*}
+         Head:=buf;
+         Coda:=buf;
+         FirstIsPostDraw:=false;
+       end;
+
+  var PrecFlag:boolean;
+
+  begin
+    PrecFlag:=RefreshProcessing;
+    RefreshProcessing:=true;
+    {
+      Se "RefreshRectList" Š diverso da nil allora viene usata la Shadow List
+      passata alla procedura e viene ignorato il parametro "r", altrimenti
+      viene inizializzata una nuova Shadow List con rettangolo iniziale
+      uguale a "r".
+      Quindi se "RefreshRectList"Š diverso da nil verranno visualizzati tutti
+      gli oggetti visibili delle regioni di questa lista.
+    }
+    if RefreshRectList=NullObj then begin
+      {ControlRect:=Rect;
+      AdjustRectForViewPort(ControlRect);
+      if (ControlRect.DimX<0) or (ControlRect.DimY<0) then exit;}
+      new(FirstShadow);
+      {
+        Preparazione della SHADOW LIST che sara composta di un unico
+        elemento se l'oggetto Š il primo della lista altrimenti di
+        tanti rettangoli quanti sono i rettangoli visibili del oggetto
+        in questione (il parametro "oggetto") :
+      }
+      FirstShadow^.r:=Rect;
+      FirstShadow^.succ:=nil;
+    end
+    else FirstShadow:=RefreshRectList;
+
+    Head:=nil;
+    Coda:=nil;
+    FirstIsPostDraw:=false;
+    punt:=Start;
+    {
+      Processo di costruzione della lista delle parti degli
+      oggetti, sottostanti ad "Start", che sono visibili
+      tramite scansione verso il basso.
+
+      La scansione continua fino a quando non si Š raggiunti
+      l'ultimo elemento della lista degli oggetti oppure fino
+      a quando si arriva ad un oggetto che non pi— visibile
+      dall'alto.
+
+      Questa ultima cosa Š possibile riducendo ogni volta
+      la SHADOW LIST frammentandola con le parti visibili
+      degli oggetti al di sotto di "oggetto" fino a quando
+      non scompare del tutto, ossia fino a quando FIRSTSHADOW
+      sar… uguale a NIL.
+    }
+    while (punt<>nil) and (FirstShadow<>nil) do begin
+      if (punt^.SysConfig and cfVisible)=cfVisible then begin
+        __Shadow:=FirstShadow;
+        Shadow:=FirstShadow;
+        if punt^._Father_=nil then begin
+          CancBar:=false;
+          PostDraw:=false;
+          Norm:=true;
+          Framm:=true;
+        end
+        else begin
+          CancBar:=(punt^.SysConfig and cfCancBar)=cfCancBar;
+          PostDraw:=(punt^.SysConfig and cfPostDraw)=cfPostDraw;
+          Framm:=(not PostDraw) or CancBar;
+          Norm:=not(PostDraw or CancBar);
+        end;
+        while Shadow<>nil do
+          if Shadow^.r.Intersect(punt^.r,x)
+          then begin
+            { Operazioni per la modalit… CancBar }
+            if CancBar then begin
+              p2:=punt;
+              punt:=Ptr($0000,p2^._CancBar_);
+              if FirstIsPostDraw then NewIfFirstIsPostDraw
+              else case RectSortMethod of
+                LIFO: NewElementAtList_LIFO;
+                FIFO: NewElementAtList_FIFO;
+                TLBR: NewElementAtList_TLBR;
+                LTRB: NewElementAtList_LTRB;
+                {TLBR,LTRB: NewElementAtList_Ordered(RectSortMethod);}
+              end;
+              punt:=p2;
+              if not PostDraw then NewElementAtList_FIFO;
+              {if not PostDraw then NewElementAtList_CancBar;}
+            end;
+            { Operazioni per la modalit… PostDraw }
+            if PostDraw then NewElementAtList_PostDraw;
+            { Operazioni per la modalit… normale }
+            if Norm then begin
+              if FirstIsPostDraw then NewIfFirstIsPostDraw
+              else case RectSortMethod of
+                LIFO: NewElementAtList_LIFO;
+                FIFO: NewElementAtList_FIFO;
+                TLBR: NewElementAtList_TLBR;
+                LTRB: NewElementAtList_LTRB;
+                {TLBR,LTRB: NewElementAtList_Ordered(RectSortMethod);}
+              end;
+            end;
+            if Framm then Frammenta(FirstShadow,__Shadow,Shadow,x)
+            else begin
+              __Shadow:=Shadow;
+              Shadow:=Shadow^.succ;
+            end;
+          end
+          else begin
+            __Shadow:=Shadow;
+            Shadow:=Shadow^.succ;
+          end;
+      end;
+      punt:=punt^._down_;
+    end;
+    SetWriteMode(NormalPut);
+    if FirstShadow<>nil then begin
+      Shadow:=FirstShadow;
+      { Se devono essere cancellati i rettangoli vuoti vengono aggiunti nella
+        lista "Head" tanti elementi quanti sono i rettangoli rimasti nella
+        lista"FirstShadow". }
+      if (start=nil)
+         or
+         (
+          DeleteShadow
+          and
+          (
+           (
+            (start^._Father_<>nil)
+            and
+            ((start^._Father_^.SysConfig and cfDrawFatherRect)<>0)
+           )
+           or
+           ((start^.SysConfig and cfOnDesktop)<>0)
+          )
+         )
+      then begin
+        {if CancObjWithBar then BlankBar^.SetStyle(1,CancBarColor)
+                          else BlankBar^.SetStyle(1,BackGroundColor);
+        punt:=BlankBar;}
+        if CancObjWithBar then punt:=Ptr($0000,CancBarColor)
+                          else punt:=Ptr($0000,BackGroundColor);
+        while Shadow<>nil do begin
+          x:=Shadow^.r;
+          { Prima viene eliminato l'elemento della lista "FirstShadow" }
+          Shadow:=Shadow^.succ;
+          dispose(FirstShadow);
+          FirstShadow:=Shadow;
+          { Poi viene aggiunto l'elemento nella lista "Head" in base al
+            metodo di ordinamento }
+          if FirstIsPostDraw then NewIfFirstIsPostDraw
+          else case RectSortMethod of
+            LIFO: NewElementAtList_LIFO;
+            FIFO: NewElementAtList_FIFO;
+            TLBR: NewElementAtList_TLBR;
+            LTRB: NewElementAtList_LTRB;
+            {TLBR,LTRB: NewElementAtList_Ordered(RectSortMethod);}
+          end;
+        end;
+      end
+      else while Shadow<>nil do begin
+        Shadow:=Shadow^.succ;
+        dispose(FirstShadow);
+        FirstShadow:=Shadow;
+      end;
+    end;
+    VisibleObj:=Head;
+    if MouseIn then HideMouseCursor;
+    while VisibleObj<>nil do begin
+      with VisibleObj^ do
+        if seg(obj^)=$0000 then begin
+        {* Conclusione delle operazioni in modalit… CancBar *}
+          SetViewPort(0,0,_MaxXResolution,_MaxYResolution,true);
+          SetFillStyle(1,word(obj));
+          {$IFDEF Debugging}
+             if WaitInRefreshDelay= 0 then readkey
+                                      else
+                                      if WaitInRefreshDelay>0 then delay(WaitInRefreshDelay);
+          {$ENDIF}
+          Bar(r.x1,r.y1,r.x2,r.y2);
+        end
+        else if (obj^.SysConfig and cfScanGroup)=cfScanGroup then begin
+          Prec_Sort:=RectSortMethod;
+          RectSortMethod:=obj^.PrefRefresh;
+          RefreshRect(r,obj^._gruppo_,NullObj);
+          RectSortMethod:=Prec_Sort;
+          {$IFDEF Debugging}
+            if WaitInShutDown then
+              if WaitInRefreshDelay<0 then readkey
+                                      else delay(WaitInRefreshDelay);
+          {$ENDIF}
+        end
+        else begin
+          AdjustRectForViewPort(r);
+          if (r.x1<=_MaxXResolution) and (r.y1<=_MaxYResolution) then begin
+            SetViewPort(r.x1,r.y1,r.x2,r.y2,true);
+            {$IFDEF Debugging}
+               if WaitInRefreshDelay= 0 then readkey
+                                        else
+                                        if WaitInRefreshDelay>0 then delay(WaitInRefreshDelay);
+            {$ENDIF}
+            with obj^ do begin
+              precR:=r;
+              r.x2:=r.x2-VisibleObj^.r.x1;
+              r.y2:=r.y2-VisibleObj^.r.y1;
+              r.x1:=r.x1-VisibleObj^.r.x1;
+              r.y1:=r.y1-VisibleObj^.r.y1;
+            end;
+            obj^.Disegna;
+            with obj^ do r:=precR;
+            {obj^.DisegnaXY(obj^.r.x1-r.x1,
+                           obj^.r.y1-r.y1);}
+          end;
+        end;
+      VisibleObj:=VisibleObj^.succ;
+      dispose(Head);
+      Head:=VisibleObj;
+    end;
+    if MouseIn then ShowMouseCursor;
+    setViewPort(0,0,_MaxXResolution,_MaxYResolution,true);
+    RefreshProcessing:=PrecFlag;
+  end;
+
+
+
+
+  {²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²}
+  {²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²}
+
+
+
+
+
+  procedure RefreshDisplay;
+    var r:OTRect;
+        _d:boolean;
+    begin
+      HideMouseCursor;
+      r.assign(0,0,GetMaxX,GetMaxY);
+      _d:=DeleteShadow;
+      DeleteShadow:=false;
+      RefreshRect(r,primo,NullObj);
+      DeleteShadow:=_d;
+      ShowMouseCursor;
+    end;
+
+
+
+
+end.

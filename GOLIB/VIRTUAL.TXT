@@ -1,0 +1,51 @@
+ELENCO DEGLI OGGETTI CHE FANNO USO DELLA FUNZIONE "GetVMP".
+
+Oggetto              Modulo
+______________________________
+
+OTButton             BUTTONS
+OTRadioButtons       BUTTONS
+OTCloseButton        BUTTONS
+OTMenuLine           MENU
+
+         
+______________________________________________________________________________
+
+ATTENZIONE !!!
+
+Oggetto: Construzione di un oggetto pluri-derivato.
+
+
+  Quando si construisce un oggetto derivato da oggetti a loro volta derivati
+Š necessario che nel suo costruttore sia presente una chiamata al costruttore
+padre. Questa chiamata HA SOLO IL FINE DI eseguire del codice di inizializzazione
+standard previsto dai i costruttori dei genitori.
+
+  La chiamata al costruttore padre, invece, NON SERVE al fine di linkare
+l'oggetto con la corretta tabella dei metodi virtuali.
+
+  Quindi se il codice di inizializzazione dei genitori non serve, allora
+questa chimata pu• essere OMESSA.
+
+
+  Se il codice standard di inizializzazione deve essere eseguito, allora
+tutti gli oggetti appartenenti alla gerarchia devono chiamare, all'interno
+del loro costruttore, il contruttore padre. Si innesca, quindi, una catena
+di chiamate. In tale catena ci possono essere chiamate a costruttori tutti
+con lo stesso nome oppure con nomi diversi. In questo ultimo caso se
+un oggetto di livello intermedio nella gerarchia, ossia che Š derivato e che
+ha dei figli, chiama dei costruttori padre allora si possono verificare due
+casi:
+
+1) il costruttore padre ha lo stesso nome e allora per specificarlo si deve
+   utilizzare la parola chiave INHERITED o si deve qualificare il nome
+   del costruttore padre con l'identificatore del tipo dell'oggetto padre
+   (Es.: OTView.Init; );
+
+2) il costruttore padre ha un nome diverso e allora, per evitare collegamenti
+   errati dell'oggetto con la sua tabella dei metodi virtuali, bisogna
+   utilizzare la parola chiave INHERITED o bisogna qualificare il
+   costruttore padre. Se non si procede in questo allora l'oggetto sar…
+   linkato con la tabella corrispondente all'oggetto che chiama questo
+   construttore, ossia proprio l'oggetto intermedio.
+

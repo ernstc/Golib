@@ -1,0 +1,16 @@
+Simboli definiti dai moduli della libreria GOLIB.
+-------------------------------------------------
+
+
+
+    MODULO    | Simbolo definito      | Descizione
+--------------|-----------------------|----------------------------------------
+              |                       |
+ graftool.pas | GraphicApplication    | L'applicazione genara lavora in
+              |                       | modalit… grafica.
+              |                       |
+ golib9.pas   | GOLIB_VER10           | E' stato utilizzata la libreria
+              |                       | Golib 1.0
+              |                       |
+              |                       |
+              |                       |
