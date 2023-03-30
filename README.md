@@ -22,3 +22,6 @@ Golib logo '95 created with Paint on Windows 3.1
 Golib logo '97
 
 ![Golib logo '97](https://raw.githubusercontent.com/ernstc/Golib/main/images/Golib97.png)
+
+---
+Ernesto Cianciotta, © 1994 and beyond...
