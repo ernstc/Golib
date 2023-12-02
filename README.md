@@ -29,4 +29,9 @@ Sample app for creating a mouse cursor
 ![Resource Editor](https://raw.githubusercontent.com/ernstc/Golib/main/images/screen1.png)
 
 ---
+Sample app with user controls
+
+![Resource Editor](https://raw.githubusercontent.com/ernstc/Golib/main/images/screen2.png)
+
+---
 Ernesto Cianciotta, © 1994 and beyond...
