@@ -24,4 +24,9 @@ Golib logo '97
 ![Golib logo '97](https://raw.githubusercontent.com/ernstc/Golib/main/images/Golib97.png)
 
 ---
+Sample app for creating a mouse cursor
+
+![Resource Editor](https://raw.githubusercontent.com/ernstc/Golib/main/images/screen1.png)
+
+---
 Ernesto Cianciotta, © 1994 and beyond...
