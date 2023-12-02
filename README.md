@@ -9,7 +9,7 @@ It was inspired by the amazing Windows 95 that was just released and at that tim
 
 This project it's been for me the launch ramp in my learning path in computer science. I have learned so much doing GOLIB.
 
-This project has been created on a PC 386SX 25Mhz with 4 MB of RAM and 40 MB hard drive gently made available by my dear friends **Berardino** and **Raffaele**. GOLIB has been written with Borland Turbo Pascal 7 and Assembly.
+This project has been created on a PC 386SX 25Mhz with 4 MB of RAM and 40 MB hard drive gently made available by my dear friends **Berardino** and **Raffaele**. GOLIB has been written with [Borland Pascal 7.0](https://winworldpc.com/product/borland-pascal/7x) and [Turbo Assembler 2.0](https://winworldpc.com/product/turbo-assembler/20).
 
 GOLIB has never been released, but now it's time to share for not forgetting and preserving this my personal milestone.
 
